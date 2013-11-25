@@ -1,0 +1,360 @@
+{
+    "desc": "In this page you will see the description for Trend API.",
+    "preface": "# Preface\n## Document\nIn this document, you will find an `URL` and an `ORD` for each API layer.\n### URL\n`URL` is the current API's url. By default, you should use `GET` method to call the API.\n### ORD\n`ORD` represents **order**. It:\n* Gives the index of the current API.  \n* Suggests a recommended form of representing the current API.\n\n## Response\nCurrently, we only respond your request in forms of JSON. Please notice that there are three possible situations that our API may respond:\n### Success\nIf `success` is `true`, `content` will be the desired response.  \n``` json\n{\"success\": true, \"content\": {...}}\n```\n### In Query\nIf `success` is `false` AND `query` in `content` is `true`, `status` will be the status of current request.<br>\nIf this occurs, please retry your request every few seconds.  \n``` json\n{\"success\": false, \"content\": {\"query\": true, \"status\": {...}}}\n```\n### Failed\nIf `success` is `false` AND `query` in `content` is `false`, `reason` will be the explanation for failure.  \n``` json\n{\"success\": false, \"content\": {\"query\": false, \"reason\": {...}}}\n```\n\n## TimeStamp\nIn order to fix AJAX bugs for Internet Explorer, you should better add a timestamp parameter (e.g. `ts`).",
+    "url": "http://trend.acfun.tv/api/",
+    "list": {
+        "www": {
+            "ord": 1,
+            "desc": "In this section, you will see the APIs related to the main site.",
+            "url": "www/",
+            "list": {
+                "Assistant": {
+                    "ord": 1,
+                    "desc": "The assistant APIs which are usually used in calling other APIs.",
+                    "url": "assistant/",
+                    "list": {
+                        "Channel List": {
+                            "ord": 1,
+                            "desc": "Gets the channel list.",
+                            "pre": true,
+                            "url": "channel_list?kv={kvContent}",
+                            "param": {
+                                "kvContent": {
+                                    "desc": "Define the content of key and value.",
+                                    "type": "int",
+                                    "list": {
+                                        "0": "key is channelID and value is channelName",
+                                        "1": "key is channelName and value is channelID",
+                                        "": "key is channelID and value is channelName"
+                                    }
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of dictionaries with specified key-value.",
+                                "format": "[{key: value}, ...]"
+                            },
+                            "example": [
+                                {
+                                    "req": {},
+                                    "res": {
+                                        "content": "tba"
+                                    }
+                                },
+                                {
+                                    "req": {
+                                        "desc": "The reverse-order request.",
+                                        "param": {
+                                            "kvContent": 2
+                                        }
+                                    },
+                                    "res": {
+                                        "content": "tba"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "Rank": {
+                    "ord": 2,
+                    "desc": "The rank APIs that provide various types of rankings.",
+                    "url": "rank/",
+                    "list": {
+                        "Articles": {
+                            "ord": 1,
+                            "desc": "Gets the top 100 articles.",
+                            "pre": true,
+                            "url": "articles?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}&rev={reverse}",
+                            "param": {
+                                "channelID": {
+                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                                    "type": "int",
+                                    "list": {
+                                        "": "No limit on channels. All channels' article will be taken into consideration.",
+                                        "other IDs": "Limit article range in specified channels."
+                                    }
+                                },
+                                "fromTS": {
+                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be smaller than `toTS`.",
+                                    "type": "int"
+                                },
+                                "toTS": {
+                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be larger than `fromTS`.",
+                                    "type": "int"
+                                },
+                                "sortMethod": {
+                                    "desc": "Sort method.",
+                                    "type": "string",
+                                    "list": {
+                                        "score": "Sort by score.",
+                                        "hit": "Sort by number of hits.",
+                                        "comment": "Sort by number of comments.",
+                                        "stow": "Sort by number of stows. (Stow means Favorite in this case.)",
+                                        "part": "Sort by number of parts.",
+                                        "last": "Sort by the datetime of the last reply."
+                                    }
+                                },
+                                "rev": {
+                                    "desc": "Reverse the rank order. If it is `true`, the API will send back the most **unpopular** articles.",
+                                    "type": "boolean",
+                                    "list": {
+                                        "": "The most popular articles.",
+                                        "true": "The most unpopular articles.",
+                                        "false": "The most popular articles."
+                                    }
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of sorted articles.",
+                                "format": "[article, article, ...]\n[tba] // Each Article."
+                            }
+                        },
+                        "Uploaders": {
+                            "ord": 2,
+                            "desc": "Gets the top 100 uploaders according to the uploader's specified articles.",
+                            "pre": true,
+                            "url": "uploaders?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
+                            "param": {
+                                "channelID": {
+                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                                    "type": "int",
+                                    "list": {
+                                        "": "No limit on channels. All channels' article will be taken into consideration.",
+                                        "other IDs": "Limit article range in specified channels."
+                                    }
+                                },
+                                "fromTS": {
+                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be smaller than `toTS`.",
+                                    "type": "int"
+                                },
+                                "toTS": {
+                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be larger than `fromTS`.",
+                                    "type": "int"
+                                },
+                                "sortMethod": {
+                                    "desc": "Sort method.",
+                                    "type": "string",
+                                    "list": {
+                                        "score": "Sort by the total score.",
+                                        "hit": "Sort by the total number of hits.",
+                                        "comment": "Sort by the total number of comments.",
+                                        "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
+                                        "part": "Sort by the total number of parts.",
+                                        "articles": "Sort by number of uploader's articles."
+                                    }
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of sorted uploaders.",
+                                "format": "[uploader, uploader, ...]\n[tba] // Each Uploader."
+                            }
+                        },
+                        "Tags": {
+                            "ord": 3,
+                            "desc": "Gets the top 200 tags according to the tag's specified articles.",
+                            "pre": true,
+                            "url": "tags?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
+                            "param": {
+                                "channelID": {
+                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                                    "type": "int",
+                                    "list": {
+                                        "": "No limit on channels. All channels' article will be taken into consideration.",
+                                        "other IDs": "Limit article range in specified channels."
+                                    }
+                                },
+                                "fromTS": {
+                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be smaller than `toTS`.",
+                                    "type": "int"
+                                },
+                                "toTS": {
+                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be larger than `fromTS`.",
+                                    "type": "int"
+                                },
+                                "sortMethod": {
+                                    "desc": "Sort method.",
+                                    "type": "string",
+                                    "list": {
+                                        "score": "Sort by the total score.",
+                                        "hit": "Sort by the total number of hits.",
+                                        "comment": "Sort by the total number of comments.",
+                                        "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
+                                        "part": "Sort by the total number of parts.",
+                                        "articles": "Sort by number of uploader's articles."
+                                    }
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of sorted tags.",
+                                "format": "[tag, tag, ...]\n[tba] // Each Tag."
+                            }
+                        },
+                        "Sofa": {
+                            "ord": 4,
+                            "desc": "Gets the top 1000 user who have the most first-comment in articles.",
+                            "pre": true,
+                            "url": "sofa?from={fromRank}&to={toRank}",
+                            "param": {
+                                "fromRank": {
+                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be smaller than `toRank`. Also, `1 <= fromRank <= 1000`.",
+                                    "type": "int"
+                                },
+                                "toRank": {
+                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                                    "prec": "It has to be larger than `fromRank`. Also, `1 <= toRank <= 1000`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of sorted users.",
+                                "format": "[user, user, ...]\n[tba] // Each User."
+                            }
+                        }
+                    }
+                },
+                "Stat": {
+                    "ord": 3,
+                    "desc": "The statistic APIs that provide statistical data for AcFun.",
+                    "url": "stat/",
+                    "list": {
+                        "Total": {
+                            "ord": 1,
+                            "desc": "Gets the total statistics for AcFun.",
+                            "url": "total",
+                            "pre": true,
+                            "res": {
+                                "desc": "A list of statistics.",
+                                "format": "[scores, hits, comments, stows, parts, articles, articles_passed, articles_alive, articles_no_comment, pass_rate, alive_rate]"
+                            }
+                        },
+                        "Channel": {
+                            "ord": 2,
+                            "desc": "Gets the total statistics for each AcFun Channels.",
+                            "url": "channel?channel={channelID}",
+                            "pre": true,
+                            "param": {
+                                "channelID": {
+                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                                    "prec": "Unlike other `channelID`, this one cannot be `null`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of statistics.",
+                                "format": "[scores, hits, comments, stows, parts, articles, articles_no_comment]"
+                            }
+                        },
+                        "Sofa": {
+                            "ord": 3,
+                            "desc": "Gets the number of first-comment in articles of a specified user.",
+                            "url": "sofa?uid={userID}",
+                            "param": {
+                                "userID": {
+                                    "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A list of sorted users.",
+                                "format": "[user, user, ...]\n[tba] // Each User."
+                            }
+                        }
+                    }
+                },
+                "Graph": {
+                    "ord": 4,
+                    "desc": "The statistic APIs that provide statistical data for AcFun.",
+                    "url": "graph/",
+                    "list": {
+                        "channel": {
+                            "ord": 1,
+                            "desc": "Gets the graph of `stat versus day` of all articles / a specified channel.",
+                            "url": "channel?channel={channelID}&from={fromDay}&to={toDay}",
+                            "param": {
+                                "channelID": {
+                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                                    "type": "int",
+                                    "list": {
+                                        "": "No limit on channels. All channels' article will be taken into consideration.",
+                                        "other IDs": "Limit article range in specified channels."
+                                    }
+                                },
+                                "fromDay": {
+                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                },
+                                "toDay": {
+                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A dictionary of daily stats.",
+                                "format": "[day, day, ...]\n[scores, hits, comments, stows, parts, articles] // Each Day."
+                            }
+                        },
+                        "Article": {
+                            "ord": 2,
+                            "desc": "Gets the graph of `stat versus day` of a specified article.",
+                            "url": "article?aid={articleID}&from={fromDay}&to={toDay}",
+                            "param": {
+                                "articleID": {
+                                    "desc": "The article ID, which could be found in `www.acfun.tv/v/ac{articleID}`.",
+                                    "type": "int"
+                                },
+                                "fromDay": {
+                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                },
+                                "toDay": {
+                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A dictionary of daily stats.",
+                                "format": "[day, day, ...]\n[scores, hits, comments, stows, parts] // Each Day."
+                            }
+                        },
+                        "Uploader": {
+                            "ord": 3,
+                            "desc": "Gets the graph of `stat versus day` of a specified uploader.",
+                            "url": "article?uid={userID}&from={fromDay}&to={toDay}",
+                            "param": {
+                                "userID": {
+                                    "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
+                                    "type": "int"
+                                },
+                                "fromDay": {
+                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                },
+                                "toDay": {
+                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                                    "prec": "`1 <= fromDay <= toDay`.",
+                                    "type": "int"
+                                }
+                            },
+                            "res": {
+                                "desc": "A dictionary of daily stats.",
+                                "format": "[day, day, ...]\n[scores, hits, comments, stows, parts, articles] // Each Day."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
