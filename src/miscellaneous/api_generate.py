@@ -13,10 +13,10 @@ def generate_top_level(docJson):
 	ags.s += docJson["desc"] + FORMAT_NEW_LINE + "\n"
 	ags.s += FORMAT_URL.format(docJson["url"]) + "\n"
 	ags.s += docJson["preface"] + "\n"
-	for i in range(1, len(docJson["list"])+1):
+	for i in range(1, len(docJson["list"]) + 1):
 		desiredJson = None
 		for subJsonName in docJson["list"]:
-			if docJson["list"][subJsonName]["ord"]==i:
+			if docJson["list"][subJsonName]["ord"] == i:
 				desiredJson = docJson["list"][subJsonName]
 				desiredJson["name"] = subJsonName
 				break
@@ -29,10 +29,10 @@ def generate_h1_level(docJson, cu, co):
 	ags.s += docJson["desc"] + FORMAT_NEW_LINE + "\n"
 	ags.s += FORMAT_URL.format(cu) + "\n"
 	ags.s += FORMAT_ORD.format(co) + "\n"
-	for i in range(1, len(docJson["list"])+1):
+	for i in range(1, len(docJson["list"]) + 1):
 		desiredJson = None
 		for subJsonName in docJson["list"]:
-			if docJson["list"][subJsonName]["ord"]==i:
+			if docJson["list"][subJsonName]["ord"] == i:
 				desiredJson = docJson["list"][subJsonName]
 				desiredJson["name"] = subJsonName
 				break
@@ -45,10 +45,10 @@ def generate_h2_level(docJson, cu, co):
 	ags.s += docJson["desc"] + FORMAT_NEW_LINE + "\n"
 	ags.s += FORMAT_URL.format(cu) + "\n"
 	ags.s += FORMAT_ORD.format(co) + "\n"
-	for i in range(1, len(docJson["list"])+1):
+	for i in range(1, len(docJson["list"]) + 1):
 		desiredJson = None
 		for subJsonName in docJson["list"]:
-			if docJson["list"][subJsonName]["ord"]==i:
+			if docJson["list"][subJsonName]["ord"] == i:
 				desiredJson = docJson["list"][subJsonName]
 				desiredJson["name"] = subJsonName
 				break
