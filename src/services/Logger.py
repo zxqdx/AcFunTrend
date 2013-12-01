@@ -1,5 +1,4 @@
 '''
-去死去死去死去死
 Created on Nov 24, 2013
 
 @author: BigMoe
