@@ -22,13 +22,14 @@ class AcWsConnector(object):
 
     def __init__(self):
     	self.name = "AcWsConnector"
+    	self.logger = Logger(self.name)
     	try:
-	    	self.ServiceLocker = ServiceLocker(self.name)
-	    	self.ServiceLocker.acquire()
+	    	self.serviceLocker = ServiceLocker(self.name)
+	    	self.serviceLocker.acquire()
 	    except:
-
-        self.AcWsSender = AcWsSender()
-        self.AcWsReceiver = AcWsReceiver()
+	    	self.logger.add("Unable to initialize {}. Maybe another instance is already running".format(self.name), "SEVERE")
+        self.acWsSender = AcWsSender()
+        self.acWsReceiver = AcWsReceiver()
 
 
 class AcWsSender(object):
