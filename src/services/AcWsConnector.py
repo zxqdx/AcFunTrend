@@ -21,15 +21,25 @@ class AcWsConnector(object):
     """
 
     def __init__(self):
-    	self.name = "AcWsConnector"
-    	self.logger = Logger(self.name)
-    	try:
-	    	self.serviceLocker = ServiceLocker(self.name)
-	    	self.serviceLocker.acquire()
-	    except:
-	    	self.logger.add("Unable to initialize {}. Maybe another instance is already running".format(self.name), "SEVERE")
+        self.name = "AcWsConnector"
+        self.logger = Logger(self.name)
+        try:
+            self.serviceLocker = ServiceLocker(self.name)
+            self.serviceLocker.acquire()
+        except:
+            self.logger.add("Unable to initialize {}. Maybe another instance is already running".format(self.name), "SEVERE")
         self.acWsSender = AcWsSender()
         self.acWsReceiver = AcWsReceiver()
+
+    def run(self):
+        pass
+
+    def close(self):
+        try:
+            self.serviceLocker = ServiceLocker(self.name)
+            self.serviceLocker.acquire()
+        except:
+            self.logger.add("Unable to initialize {}. Maybe another instance is already running".format(self.name), "SEVERE")
 
 
 class AcWsSender(object):
