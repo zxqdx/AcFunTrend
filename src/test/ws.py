@@ -13,3 +13,5 @@ ws.send('{func:"user.get",id:"2",requestId:"papaya2"}')
 result =  ws.recv()
 print("Received '{}'".format(result))
 ws.close()
+
+# test
