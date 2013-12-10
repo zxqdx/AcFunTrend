@@ -25,7 +25,11 @@ def is_file(filepath):
 
 def write_file(filename, content, form="json", append=True, end=True):
     try:
-        end_str = ""
+        folderName = os.path.dirname(filename)
+        try:
+            os.makedirs(folderName)
+        except Exception as e:
+            pass
         if append:
             file = open(filename, "a")
         else:
@@ -42,6 +46,7 @@ def write_file(filename, content, form="json", append=True, end=True):
             file.write(end_str)
         file.close()
     except Exception as e:
+        raise e
         return False
 
 
@@ -71,6 +76,11 @@ def try_until_sign(sign, tryFunc, errorFunc=None, failedFunc=None, retryNum=-1, 
         if failedFunc:
             failedFunc()
     return isSuccess
+
+def replace_all(string, old, new):
+    while old in string:
+        string = string.replace(old, new)
+    return string
 
 if __name__ == '__main__':
     write_file("test", {"erwe": "wrwer"}, end=False)
