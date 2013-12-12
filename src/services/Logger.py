@@ -25,17 +25,15 @@ class Logger(object):
         self.filename = None
         self._open(module)
         
-    def add(self, message, level):
+    def add(self, message, level, ex = None):
         """
         @Param level: Can only be three cases.
                       -- SEVERE: Record into the normal log file and the error log file.
                       -- WARNING: Record into the normal log file.
                       -- INFO: Record into the normal log file.
+        @Param ex: Exception. If it is not None, append the exception after the message.
         """
-        if isinstance(message, Exception):
-            gadget.write_file(self.filename, str(datetime.datetime.now()) + "Meowu!", None)
-        else:
-            gadget.write_file(self.filename, str(datetime.datetime.now()) + "---Messege: " + str(message) + "-----Level: " + str(level), None)
+        gadget.write_file(self.filename, str(datetime.datetime.now()) + "---Messege: " + str(message) + "-----Level: " + str(level), None)
 
     def _open(self, module):
         self.module = module
