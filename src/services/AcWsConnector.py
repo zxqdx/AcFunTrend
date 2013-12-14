@@ -29,15 +29,9 @@ class AcWsConnector(object):
             self.serviceLocker.acquire()
         except Exception as e:
             self.logger.add("Unable to initialize {}. Maybe another instance is already running.".format(self.name), "SEVERE", ex=e)
-            raise SystemExit
-        try:
-            conn = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-            cursor = conn.cursor()
-            self.mysqlAcWs = Global.MysqlInstance(self.name, conn, cursor)
-        except Exception as e:
-            self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
-        self.acWsSender = AcWsSender(self.logger, self.mysqlAcWs)
-        self.acWsReceiver = AcWsReceiver(self.logger, self.mysqlAcWs)
+            raise e
+        self.acWsSender = AcWsSender(self.logger)
+        self.acWsReceiver = AcWsReceiver(self.logger)
 
     def run(self):
         self.acWsSender.run()
@@ -47,7 +41,7 @@ class AcWsConnector(object):
             self.serviceLocker
         except Exception as e:
             self.logger.add("Unable to close {}. Maybe another instance is already running.".format(self.name), "SEVERE", ex=e)
-            raise SystemExit
+            raise e
 
 
 class AcWsSender(threading.Thread):
@@ -55,9 +49,14 @@ class AcWsSender(threading.Thread):
     """
     The sender that is responsible for sending requests.
     """
-    def __init__(self, logger, mysqlAcWs):
+    def __init__(self, logger):
         self.logger = logger
-        self.mysqlAcWs = mysqlAcWs
+        try:
+            self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
+            self.cursorAcWs = conn.cursor()
+        except Exception as e:
+            self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
+            raise e
 
     def run(self):
 
@@ -73,6 +72,11 @@ class AcWsReceiver(object):
 
     def __init__(self, logger, mysqlAcWs):
         self.logger = logger
-        self.mysqlAcWs = mysqlAcWs
+        try:
+            self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
+            self.cursorAcWs = conn.cursor()
+        except Exception as e:
+            self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
+            raise e
     def run(self):
         pass

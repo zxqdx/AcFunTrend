@@ -19,11 +19,6 @@ if isDebug:
     mysqlPassword = "miaowu"
     mysqlPort = 3306
     mysqlAcWsConnectorDB = "trend_acws"
+    mysqlAcArticleDB = "trend_articles"
 else:
     raise NotImplementedError("Not yet deployed.")
-
-class MysqlInstance(object):
-    def __init__(self, name, conn, cursor):
-        self.name = name;
-        self.conn = conn;
-        self.cursor = cursor
