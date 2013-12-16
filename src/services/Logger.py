@@ -35,13 +35,11 @@ class Logger(object):
         @Param ex: Exception. If it is not None, append the exception after the message.
         """
         i = datetime.datetime.now()
-        if ex != None:
+        if ex:
             message += " Exception: "+ex
         if level == "SEVERE":
-            gadget.write_file(self.filename, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
             gadget.write_file(self.filenameDebug, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
-        else:
-            gadget.write_file(self.filename, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
+        gadget.write_file(self.filename, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
 
     def _open(self, module):
         i = datetime.datetime.now()
