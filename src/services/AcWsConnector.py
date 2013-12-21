@@ -35,6 +35,7 @@ class AcWsConnector(object):
 
     def run(self):
         self.acWsSender.run()
+        # self.acWsReceiver.run()
 
     def close(self):
         try:
@@ -53,7 +54,7 @@ class AcWsSender(threading.Thread):
         self.logger = logger
         try:
             self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-            self.cursorAcWs = conn.cursor()
+            self.cursorAcWs = self.connAcWs.cursor()
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
             raise e
@@ -74,7 +75,7 @@ class AcWsReceiver(object):
         self.logger = logger
         try:
             self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-            self.cursorAcWs = conn.cursor()
+            self.cursorAcWs = self.connAcWs.cursor()
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
             raise e

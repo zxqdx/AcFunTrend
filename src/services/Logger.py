@@ -18,14 +18,14 @@ class Logger(object):
     """
 
     def __init__(self, module):
-        '''
+        """
         Constructor
-        '''
+        """
         self.module = None
         self.filename = None
         self.filenameDebug = None
         self._open(module)
-        
+
     def add(self, message, level, ex = None):
         """
         @Param level: Can only be three cases.
@@ -34,27 +34,29 @@ class Logger(object):
                       -- INFO: Record into the normal log file.
         @Param ex: Exception. If it is not None, append the exception after the message.
         """
-        i = datetime.datetime.now()
         if ex:
-            message += " Exception: "+ex
+            message += " Exception: " + str(ex)
         if level == "SEVERE":
-            gadget.write_file(self.filenameDebug, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
-        gadget.write_file(self.filename, "{} {} {} {}:{}:{}---Messege: {}---Level: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second),str(message),str(level)), None)
+            gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
+        gadget.write_file(self.filenameDebug, "[{}] <{}> {}".format(self._time(), level, message), None)
+
+    def _time(self):
+        i = datetime.datetime.now()
+        return "{}-{}-{} {}:{}:{}".format(i.year, i.month, i.day, i.hour, i.minute, i.second)
 
     def _open(self, module):
         i = datetime.datetime.now()
         self.module = module
-        self.filename = "{}/debug/{}/{}_{}.log".format(Global.wwwPath, str(datetime.datetime.now().year)+str(datetime.datetime.now().month), datetime.datetime.now().day, self.module)
-        gadget.write_file(self.filename, "-----Strat at: {} {} {} {}:{}:{}------Module: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second), str(module)), None)
-        self.filenameDebug = "{}/debug/{}/{}_{}_{}.log".format(Global.wwwPath, str(datetime.datetime.now().year)+str(datetime.datetime.now().month), datetime.datetime.now().day, self.module,
-         "DEBUG")
-        gadget.write_file(self.filenameDebug, "-----Strat at: {} {} {} {}:{}:{}------Module: {}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second), str(module)), None)
-        gadget.write_file(self.filenameDebug, "---------Record only SEVERE error--------", None)
+        self.filename = "{}/debug/{}/{}_{}.log".format(Global.wwwPath, i.year + i.month, i.day, self.module)
+        self.filenameDebug = "{}/debug/{}/{}_{}_err.log".format(Global.wwwPath, str(i.year) + str(i.month),
+                                                                i.day, self.module)
+        gadget.write_file(self.filename, "-----Start at: {}------".format(self._time()), None)
+        gadget.write_file(self.filenameDebug, "-----Start at: {}------".format(self._time()), None)
 
     def close(self):
-        i = datetime.datetime.now()
-        gadget.write_file(self.filename, "End at: {} {} {} {}:{}:{}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second)), None)
-        gadget.write_file(self.filenameDebug, "End at: {} {} {} {}:{}:{}".format(str(i.year),str(i.month),str(i.day),str(i.hour),str(i.minute),str(i.second)), None)
+        gadget.write_file(self.filename, "End at: {}".format(self._time()), None)
+        gadget.write_file(self.filenameDebug, "End at: {}".format(self._time()), None)
+
 
 if __name__=="__main__":
     i = Logger("DEBUG")

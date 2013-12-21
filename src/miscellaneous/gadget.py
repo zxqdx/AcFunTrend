@@ -7,6 +7,7 @@ Created on 11, 24, 2013
 import json
 import sys
 import os
+import datetime
 
 
 def is_panguine():
@@ -82,5 +83,13 @@ def replace_all(string, old, new):
         string = string.replace(old, new)
     return string
 
+def date_to_ac_days(date=None):
+    if not date:
+        date = datetime.datetime.now()
+    start = datetime.datetime(2007,6,4)
+    return (date - start).days + 1
+
 if __name__ == '__main__':
-    write_file("test", {"erwe": "wrwer"}, end=False)
+    # write_file("test", {"erwe": "wrwer"}, end=False)
+    print(date_to_ac_days(datetime.datetime(2007,6,4)))
+    print(date_to_ac_days(datetime.datetime.now()))
