@@ -1,8 +1,8 @@
-'''
+"""
 Created on Nov 24, 2013
 
 @author: BigMoe
-'''
+"""
 import os
 import sys
 
@@ -45,7 +45,8 @@ class Logger(object):
         if Global.isDebug:
             print("[{}] <{}> ({}) {}".format(self._time(), level, self.module, message))
 
-    def _time(self):
+    @staticmethod
+    def _time():
         i = datetime.datetime.now()
         return "{}-{}-{} {:02d}:{:02d}:{:02d}".format(i.year % 100, i.month, i.day, i.hour, i.minute, i.second)
 

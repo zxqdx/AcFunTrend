@@ -14,6 +14,8 @@ isDebug = True
 wwwPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 wwwPath = gadget.replace_all(wwwPath, "\\", "/")
 
+globalSwitchPath = "{}/GlobalSwitch.trr".format(wwwPath)
+
 AcFunAPIHost = "59.175.227.54"
 AcFunAPIPort = 88
 AcFunAPIHttpUrl = "http://{}:{}/http/json/exec?".format(AcFunAPIHost, AcFunAPIPort)

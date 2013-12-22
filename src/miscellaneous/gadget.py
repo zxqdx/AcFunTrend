@@ -1,8 +1,8 @@
-'''
+"""
 Created on 11, 24, 2013
 
 @author: BigMoe
-'''
+"""
 
 import json
 import sys
@@ -12,17 +12,17 @@ import datetime
 
 
 def is_panguine():
-    '''
+    """
     Returns true if it is Linux.
-    '''
+    """
     return not sys.platform.startswith("win")
 
 
-def is_file(filepath):
+def is_file(filePath):
     """
     Returns true if the file exists.
     """
-    return os.path.isfile(filepath)
+    return os.path.isfile(filePath)
 
 
 def write_file(filename, content, form="json", append=True, end=True):
@@ -36,7 +36,7 @@ def write_file(filename, content, form="json", append=True, end=True):
             file = open(filename, "a")
         else:
             file = open(filename, "w")
-        if form == None:
+        if not form:
             file.write(content)
         elif form == "json":
             file.write(json.dumps(content))
@@ -49,14 +49,25 @@ def write_file(filename, content, form="json", append=True, end=True):
         file.close()
     except Exception as e:
         raise e
-        return False
+    return True
 
+def read_file(filename, form="json"):
+    try:
+        file = open(filename, "r")
+        content = file.read().strip()
+        if form=="json":
+            content = json.loads(content)
+        file.close()
+        return content
+    except Exception as e:
+        raise e
 
 def remove_file(filename):
     try:
         os.remove(filename)
     except Exception as e:
         return False
+    return True
 
 
 def try_until_sign_appears(sign, tryFunc, errorFunc=None, failedFunc=None, retryNum=-1, sleep=1, logger=None):

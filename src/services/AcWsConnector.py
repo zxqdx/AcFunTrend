@@ -1,8 +1,8 @@
-'''
+"""
 Created on Nov 24, 2013
 
 @author: zxqdx
-'''
+"""
 
 # Imports parent directory to sys.path
 import os
@@ -40,20 +40,28 @@ class AcWsConnector(threading.Thread):
         self.acWsReceiver.daemon = True
 
     def run(self):
-        self.acWsSender.start()
         self.acWsReceiver.start()
+        self.acWsSender.start()
         while True:
+            interrupter = self.serviceLocker.is_interrupt()
+            if interrupter:
+                self.logger.add("The service is interrupted by {}.".format(interrupter), "SEVERE")
+                break
+
             self.acWsReceiver.join(0.1)
             if not self.acWsReceiver.isAlive():
                 self.logger.add("An error occurs in thread {}. The service is about to quit.".format("AcWsReceiver"),
                                 "SEVERE")
                 break
             self.acWsSender.join(0.1)
+
             if not self.acWsSender.isAlive():
                 self.logger.add("An error occurs in thread {}. The service is about to quit.".format("AcWsSender"),
                                 "SEVERE")
                 break
+            time.sleep(1)
         self.close()
+        self.logger.close()
 
     def close(self):
         try:
@@ -85,9 +93,8 @@ class AcWsSender(threading.Thread):
             raise e
 
     def run(self):
-        time.sleep(5)
-        raise Exception("Error!!!")
-        pass
+        while True:
+            pass
 
 
 class AcWsReceiver(threading.Thread):
@@ -112,9 +119,7 @@ class AcWsReceiver(threading.Thread):
 
     def run(self):
         while True:
-            print("I am alive!!!")
-            time.sleep(0.5)
-        pass
+            pass
 
 
 if __name__ == "__main__":
