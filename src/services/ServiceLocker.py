@@ -7,19 +7,20 @@ Created on Dec 8, 2013
 # Imports parent directory to sys.path
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from miscellaneous import gadget
+import Global
 
 class ServiceLocker(object):
-
     """
     Create locks for service to ensure that ONLY one service is running at one time.
     """
 
     def __init__(self, serviceName):
         self.serviceName = serviceName
-        self.serviceLockPath = "{}.slock".format(serviceName)
+        self.serviceLockPath = "{}.{}".format(serviceName, Global.lockFileSuffix)
         self._check()
 
     def _check(self):

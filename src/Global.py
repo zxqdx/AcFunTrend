@@ -2,6 +2,7 @@ __author__ = "zxqdx"
 
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from miscellaneous import gadget
@@ -19,6 +20,7 @@ AcFunAPIHttpUrl = "http://{}:{}/http/json/exec?".format(AcFunAPIHost, AcFunAPIPo
 AcFunAPIWsUrl = "ws://{}:{}/ws".format(AcFunAPIHost, AcFunAPIPort)
 
 logFileSuffix = "trendlog"
+lockFileSuffix = "slock"
 
 if isDebug:
     mysqlUser = "root"

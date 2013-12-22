@@ -5,14 +5,16 @@ Created on Nov 24, 2013
 '''
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from miscellaneous import gadget
 import datetime
 
 import Global
-class Logger(object):
 
+
+class Logger(object):
     """
     物怪
     """
@@ -27,7 +29,7 @@ class Logger(object):
         self.err = False
         self._open(module)
 
-    def add(self, message, level, ex = None):
+    def add(self, message, level, ex=None):
         """
         @Param level: Can only be three cases.
                       -- SEVERE: Record into the normal log file and the error log file.
@@ -53,7 +55,7 @@ class Logger(object):
         self.filename = "{}/debug/{}-{:02d}/{:02d}_{}.{}".format(Global.wwwPath, i.year, i.month, i.day,
                                                                  self.module, Global.logFileSuffix)
         self.filenameDebug = "{}/debug/{}-{:02d}/{:02d}_{}_err.{}".format(Global.wwwPath, i.year, i.month,
-                                                               i.day, self.module, Global.logFileSuffix)
+                                                                          i.day, self.module, Global.logFileSuffix)
         gadget.write_file(self.filename, "-----Start at: {}------".format(self._time()), None)
 
     def close(self):
@@ -63,7 +65,7 @@ class Logger(object):
         gadget.write_file(self.filename, "-----End at: {}-----".format(self._time()), None)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     i = Logger("DEBUG")
-    i.add("Test", "SEVERE", ex = "Meowuuuuuuu~~")
+    i.add("Test", "SEVERE", ex="Meowuuuuuuu~~")
     i.close()

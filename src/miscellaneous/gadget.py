@@ -83,16 +83,19 @@ def try_until_sign_appears(sign, tryFunc, errorFunc=None, failedFunc=None, retry
             failedFunc()
     return isSuccess
 
+
 def replace_all(string, old, new):
     while old in string:
         string = string.replace(old, new)
     return string
 
+
 def date_to_ac_days(date=None):
     if not date:
         date = datetime.datetime.now()
-    start = datetime.datetime(2007,6,4)
+    start = datetime.datetime(2007, 6, 4)
     return (date - start).days + 1
+
 
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
@@ -128,7 +131,8 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
     else:
         raise NotImplementedError("Unknown format: {}".format(form))
 
+
 if __name__ == '__main__':
     # write_file("test", {"erwe": "wrwer"}, end=False)
-    print(date_to_ac_days(datetime.datetime(2007,6,4)))
+    print(date_to_ac_days(datetime.datetime(2007, 6, 4)))
     print(date_to_ac_days(datetime.datetime.now()))
