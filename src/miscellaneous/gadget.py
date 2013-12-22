@@ -7,6 +7,7 @@ Created on 11, 24, 2013
 import json
 import sys
 import os
+import time
 import datetime
 
 
@@ -58,7 +59,7 @@ def remove_file(filename):
         return False
 
 
-def try_until_sign(sign, tryFunc, errorFunc=None, failedFunc=None, retryNum=-1, sleep=1):
+def try_until_sign_appears(sign, tryFunc, errorFunc=None, failedFunc=None, retryNum=-1, sleep=1, logger=None):
     """
     @Param errorFunc: Has to have the "msg" parameter.
     """
@@ -72,7 +73,11 @@ def try_until_sign(sign, tryFunc, errorFunc=None, failedFunc=None, retryNum=-1, 
         except Exception as e:
             if errorFunc:
                 errorFunc(msg=str(e))
+            if logger:
+                logger.add("Error occurred in try_until_sign_appears@gadget.", "WARNING", e)
         retry += 1
+        if retry == retryNum + 1:
+            time.sleep(sleep)
     if not isSuccess:
         if failedFunc:
             failedFunc()
@@ -88,6 +93,35 @@ def date_to_ac_days(date=None):
         date = datetime.datetime.now()
     start = datetime.datetime(2007,6,4)
     return (date - start).days + 1
+
+def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
+    def get_result(resultWrapper):
+        resultWrapper[0] = pool.request('GET', url)
+        resultWrapper[1] = str(resultWrapper[0].data)
+
+    def raise_exception(msg):
+        raise Exception(msg)
+
+    import urllib3
+
+    if not timeout:
+        timeout = urllib3.Timeout.DEFAULT_TIMEOUT
+    else:
+        timeout = urllib3.Timeout(total=timeout)
+    pool = urllib3.HTTPConnectionPool(host, port, timeout=timeout)
+
+    resultWrapper = [None, None]
+    try_until_sign_appears(None, lambda: get_result(resultWrapper),
+                           failedFunc=lambda: raise_exception("Failed to GET http:{}:{}{}".format(host, port, url)),
+                           retryNum=retryNum, sleep=sleep, logger=logger)
+    if not resultWrapper[1]:
+        resultWrapper[1] = ""
+    if not form:
+        return resultWrapper[1]
+    elif form == "json":
+        return json.loads(resultWrapper[1])
+    else:
+        raise NotImplementedError("Unknown format: {}".format(form))
 
 if __name__ == '__main__':
     # write_file("test", {"erwe": "wrwer"}, end=False)

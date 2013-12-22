@@ -6,7 +6,6 @@ Created on Dec 8, 2013
 
 import gadget
 
-
 class ServiceLocker(object):
 
     """
@@ -23,11 +22,14 @@ class ServiceLocker(object):
             raise IOError("{} already exists. This might because another instance of {} is running.".format(
                 self.serviceLockPath, self.serviceName))
 
-    def _raise(self, msg):
+    @staticmethod
+    def _raise(msg):
         raise Exception(msg)
 
     def acquire(self):
-        gadget.try_until_sign(None, lambda: gadget.write_file(self.serviceLockPath, 1), failedFunc=lambda: self._raise("Failed to acquire lock."), retryNum=5)
+        gadget.try_until_sign_appears(None, lambda: gadget.write_file(self.serviceLockPath, 1),
+                                      failedFunc=lambda: self._raise("Failed to acquire lock."), retryNum=5)
 
     def release(self):
-        gadget.try_until_sign(None, lambda: gadget.remove_file(self.serviceLockPath), failedFunc=lambda: self._raise("Failed to release lock."), retryNum=5)
+        gadget.try_until_sign_appears(None, lambda: gadget.remove_file(self.serviceLockPath),
+                                      failedFunc=lambda: self._raise("Failed to release lock."), retryNum=5)

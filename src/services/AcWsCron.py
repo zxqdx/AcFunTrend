@@ -9,26 +9,52 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from Logger import Logger
-import Global
 import pymysql
+import time
+import json
+
+from Logger import Logger
+from miscellaneous import gadget
+import Global
 
 def main(mode):
     # Connects to the MYSQL Database.
     conn, cursor = connect_to_queue()
     # Quits if the previous requests have not been finished yet.
+    if is_previous_running(cursor, mode):
+        logger.add("The previous requests are still running. This cron job is about to quit in order to avoid conflict",
+                   "SEVERE")
+        raise SystemExit
     if mode==1:
-        if is_previous_running(cursor, "priority=0 OR priority=1"):
-            pass
+        # Gets the newest article (Using HTTP request).
+        newestAID = None
+        for x in xrange(10):
+            resultStr = gadget.get_page(Global.AcFunAPIHost, Global.AcFunAPIHttpUrl, port=AcFunAPIPort,
+                                        timeout=10, retryNum=3, logger=logger)
+            resultJson = json.loads(resultStr)
+            try:
+                newestAID = resultJson["result"]["id"]
+                break
+            except:
+                pass
+            time.sleep(10)
+        if not newestAID:
+            logger.add("Failed to get the newest AID. This cron job is forced to quit.", "SEVERE")
+            raise SystemExit
+        # Adds and refreshes today's articles.
+
+        pass
     elif mode==2:
-        if is_previous_running(cursor, "priority=2"):
-            pass
+        pass
     elif mode==3:
-        if is_previous_running(cursor, "priority=3"):
-            pass
+        pass
+
 
 def connect_to_queue():
     try:
+        logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
+                                                                         Global.mysqlAcWsConnectorDB,
+                                                                         Global.mysqlUser))
         connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
         cursorAcWs = connAcWs.cursor()
     except Exception as e:
@@ -36,8 +62,9 @@ def connect_to_queue():
         raise e
     return connAcWs, cursorAcWs
 
-def is_previous_running(cursor, where):
-    cursor.execute("SELECT request_id FROM trend_acws_queue WHERE {} LIMIT 1".format(where))
+
+def is_previous_running(cursor, mode):
+    cursor.execute("SELECT request_id FROM trend_acws_queue WHERE priority={}} LIMIT 1".format(mode))
     return cursor.rowcount > 0
 
 logger = Logger("AcWsCron")

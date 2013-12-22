@@ -39,6 +39,8 @@ class Logger(object):
         if level == "SEVERE":
             gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
         gadget.write_file(self.filenameDebug, "[{}] <{}> {}".format(self._time(), level, message), None)
+        if Global.isDebug:
+            print("[{}] <{}> ({}) {}".format(self._time(), level, self.module, message))
 
     def _time(self):
         i = datetime.datetime.now()
@@ -47,9 +49,10 @@ class Logger(object):
     def _open(self, module):
         i = datetime.datetime.now()
         self.module = module
-        self.filename = "{}/debug/{}/{}_{}.log".format(Global.wwwPath, i.year + i.month, i.day, self.module)
-        self.filenameDebug = "{}/debug/{}/{}_{}_err.log".format(Global.wwwPath, str(i.year) + str(i.month),
-                                                                i.day, self.module)
+        self.filename = "{}/debug/{}/{}_{}.{}".format(Global.wwwPath, i.year + i.month, i.day, self.module,
+                                                      Global.logFileSuffix)
+        self.filenameDebug = "{}/debug/{}/{}_{}_err.{}".format(Global.wwwPath, str(i.year) + str(i.month),
+                                                               i.day, self.module, Global.logFileSuffix)
         gadget.write_file(self.filename, "-----Start at: {}------".format(self._time()), None)
         gadget.write_file(self.filenameDebug, "-----Start at: {}------".format(self._time()), None)
 
