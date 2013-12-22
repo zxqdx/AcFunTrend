@@ -24,6 +24,7 @@ class Logger(object):
         self.module = None
         self.filename = None
         self.filenameDebug = None
+        self.err = False
         self._open(module)
 
     def add(self, message, level, ex = None):
@@ -38,27 +39,28 @@ class Logger(object):
             message += " Exception: " + str(ex)
         if level == "SEVERE":
             gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
-        gadget.write_file(self.filenameDebug, "[{}] <{}> {}".format(self._time(), level, message), None)
+        gadget.write_file(self.filename, "[{}] <{}> {}".format(self._time(), level, message), None)
         if Global.isDebug:
             print("[{}] <{}> ({}) {}".format(self._time(), level, self.module, message))
 
     def _time(self):
         i = datetime.datetime.now()
-        return "{}-{}-{} {}:{}:{}".format(i.year, i.month, i.day, i.hour, i.minute, i.second)
+        return "{}-{}-{} {:02d}:{:02d}:{:02d}".format(i.year % 100, i.month, i.day, i.hour, i.minute, i.second)
 
     def _open(self, module):
         i = datetime.datetime.now()
         self.module = module
-        self.filename = "{}/debug/{}/{}_{}.{}".format(Global.wwwPath, i.year + i.month, i.day, self.module,
-                                                      Global.logFileSuffix)
-        self.filenameDebug = "{}/debug/{}/{}_{}_err.{}".format(Global.wwwPath, str(i.year) + str(i.month),
+        self.filename = "{}/debug/{}-{:02d}/{:02d}_{}.{}".format(Global.wwwPath, i.year, i.month, i.day,
+                                                                 self.module, Global.logFileSuffix)
+        self.filenameDebug = "{}/debug/{}-{:02d}/{:02d}_{}_err.{}".format(Global.wwwPath, i.year, i.month,
                                                                i.day, self.module, Global.logFileSuffix)
         gadget.write_file(self.filename, "-----Start at: {}------".format(self._time()), None)
-        gadget.write_file(self.filenameDebug, "-----Start at: {}------".format(self._time()), None)
 
     def close(self):
-        gadget.write_file(self.filename, "End at: {}".format(self._time()), None)
-        gadget.write_file(self.filenameDebug, "End at: {}".format(self._time()), None)
+        """
+        It is okay to skip this method...
+        """
+        gadget.write_file(self.filename, "-----End at: {}-----".format(self._time()), None)
 
 
 if __name__=="__main__":

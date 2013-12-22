@@ -55,7 +55,7 @@ class AcWsSender(threading.Thread):
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                   Global.mysqlAcWsConnectorDB,
-                                                                                  Global.mysqlUser))
+                                                                                  Global.mysqlUser), "INFO")
             self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
             self.cursorAcWs = self.connAcWs.cursor()
         except Exception as e:
@@ -79,7 +79,7 @@ class AcWsReceiver(object):
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                   Global.mysqlAcWsConnectorDB,
-                                                                                  Global.mysqlUser))
+                                                                                  Global.mysqlUser), "INFO")
             self.connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
             self.cursorAcWs = self.connAcWs.cursor()
         except Exception as e:

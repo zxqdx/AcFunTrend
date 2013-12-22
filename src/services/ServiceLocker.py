@@ -4,7 +4,12 @@ Created on Dec 8, 2013
 @author: zxqdx
 '''
 
-import gadget
+# Imports parent directory to sys.path
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from miscellaneous import gadget
 
 class ServiceLocker(object):
 

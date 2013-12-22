@@ -97,7 +97,7 @@ def date_to_ac_days(date=None):
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
         resultWrapper[0] = pool.request('GET', url)
-        resultWrapper[1] = str(resultWrapper[0].data)
+        resultWrapper[1] = resultWrapper[0].data.decode("utf-8")
 
     def raise_exception(msg):
         raise Exception(msg)
@@ -119,7 +119,12 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
     if not form:
         return resultWrapper[1]
     elif form == "json":
-        return json.loads(resultWrapper[1])
+        resultJson = None
+        try:
+            resultJson = json.loads(resultWrapper[1])
+        except:
+            raise_exception("Failed to convert the str to JSON.")
+        return resultJson
     else:
         raise NotImplementedError("Unknown format: {}".format(form))
 

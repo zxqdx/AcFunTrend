@@ -18,7 +18,8 @@ from miscellaneous import gadget
 import Global
 
 def main(mode):
-    # Connects to the MYSQL Database.
+    logger.add("Running on mode {}.".format(mode), "INFO")
+    # Connects to the ACWS Queue.
     conn, cursor = connect_to_queue()
     # Quits if the previous requests have not been finished yet.
     if is_previous_running(cursor, mode):
@@ -26,12 +27,14 @@ def main(mode):
                    "SEVERE")
         raise SystemExit
     if mode==1:
-        # Gets the newest article (Using HTTP request).
+        # Gets the newest article ID (AID) using HTTP request.
+        logger.add("Fetching the newest AID ...", "INFO")
         newestAID = None
-        for x in xrange(10):
-            resultStr = gadget.get_page(Global.AcFunAPIHost, Global.AcFunAPIHttpUrl, port=AcFunAPIPort,
-                                        timeout=10, retryNum=3, logger=logger)
-            resultJson = json.loads(resultStr)
+        for x in range(10):
+            resultJson = gadget.get_page(Global.AcFunAPIHost,
+                                        "/http/json/exec?func=content.get&id=1999999999&next=true&desc=true",
+                                        port=Global.AcFunAPIPort, timeout=10, form="json", retryNum=3, logger=logger)
+
             try:
                 newestAID = resultJson["result"]["id"]
                 break
@@ -41,20 +44,39 @@ def main(mode):
         if not newestAID:
             logger.add("Failed to get the newest AID. This cron job is forced to quit.", "SEVERE")
             raise SystemExit
-        # Adds and refreshes today's articles.
-
-        pass
+        else:
+            logger.add("The newest AID is {}".format(newestAID), "INFO")
+        # Create the job that adds and refreshes articles today.
+        acDayToday = gadget.date_to_ac_days()
+        ## Fetch the latest AID of articles before today.
+        cursor.execute(
+            "SELECT id FROM ac_articles WHERE sort_time_ac_day<{} ORDER BY sort_time DESC LIMIT 1".format(acDayToday))
+        if cursor.rowcount > 1:
+            earliestAID = cursor.fetchall()[0][0] # TODO test it.
+        else:
+            ## If failed, set the earliest AID equals 1.
+            earliestAID = 1
+        logger.add("The earliest AID is {}".format(earliestAID), "INFO")
+        ## Push requests into the ACWS Queue.
+        for AID in range(earliestAID + 1, newestAID + 1):
+            if AID % 200 == 0:
+                logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID), "INFO")
+            cursor.execute(
+                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) VALUES ("{}", "{}", {}, {})'.format(
+                    "fullcontent.get", AID, 5, 1))
+        conn.commit()
+        logger.add("Requests pushed successfully.", "INFO")
     elif mode==2:
         pass
     elif mode==3:
         pass
-
+    logger.add("Finish mode {}.".format(mode), "INFO")
 
 def connect_to_queue():
     try:
         logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
                                                                          Global.mysqlAcWsConnectorDB,
-                                                                         Global.mysqlUser))
+                                                                         Global.mysqlUser), "INFO")
         connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser, passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
         cursorAcWs = connAcWs.cursor()
     except Exception as e:
@@ -64,7 +86,7 @@ def connect_to_queue():
 
 
 def is_previous_running(cursor, mode):
-    cursor.execute("SELECT request_id FROM trend_acws_queue WHERE priority={}} LIMIT 1".format(mode))
+    cursor.execute("SELECT request_id FROM trend_acws_queue WHERE priority={} LIMIT 1".format(mode))
     return cursor.rowcount > 0
 
 logger = Logger("AcWsCron")
