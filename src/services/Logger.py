@@ -29,7 +29,7 @@ class Logger(object):
         self.err = False
         self._open(module)
 
-    def add(self, message, level, ex=None):
+    def add(self, message, level="INFO", ex=None):
         """
         @Param level: Can only be three cases.
                       -- SEVERE: Record into the normal log file and the error log file.

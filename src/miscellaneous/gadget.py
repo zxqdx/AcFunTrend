@@ -101,12 +101,16 @@ def replace_all(string, old, new):
     return string
 
 
-def date_to_ac_days(date=None):
-    if not date:
-        date = datetime.datetime.now()
+def date_to_ac_days(d=None):
+    if not d:
+        d = datetime.datetime.now()
     start = datetime.datetime(2007, 6, 4)
-    return (date - start).days + 1
+    return (d - start).days + 1
 
+def datetime_to_timestamp(d=None):
+    if not d:
+        d = datetime.datetime.now()
+    return int(d.timestamp()*1000)
 
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
@@ -141,7 +145,6 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
         return resultJson
     else:
         raise NotImplementedError("Unknown format: {}".format(form))
-
 
 if __name__ == '__main__':
     # write_file("test", {"erwe": "wrwer"}, end=False)
