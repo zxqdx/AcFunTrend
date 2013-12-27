@@ -25,6 +25,9 @@ AcFunAPIWsSecret = "e0c64e4b2c6eba73a1bb2b5ba2a854bbc1fa592f"
 AcFunAPIWsTimeout = 20
 AcFunAPIWsRetryNum = 3
 AcFunAPIWsCycleGap = 5
+AcFunAPIFuncGetArticle = "content.get"
+AcFunAPIFuncGetArticleFull = "fullcontent.get"
+AcFunAPIFuncGetUserFull = "fulluser.get"
 
 logFileSuffix = "trendlog"
 lockFileSuffix = "slock"

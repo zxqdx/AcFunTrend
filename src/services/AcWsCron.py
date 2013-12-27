@@ -12,7 +12,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pymysql
 import time
-import json
 
 from Logger import Logger
 from miscellaneous import gadget
@@ -25,7 +24,8 @@ def main(mode):
     conn, cursor = connect_to_queue()
     # Quits if the previous requests have not been finished yet.
     if is_previous_running(cursor, mode):
-        logger.add("The previous requests are still running. This cron job is about to quit in order to avoid conflict",
+        logger.add("The previous requests are still running. "
+                   "This cron job is about to quit in order to avoid conflict",
                    "SEVERE")
         raise SystemExit
     if mode == 1:
@@ -34,7 +34,8 @@ def main(mode):
         newestAID = None
         for x in range(10):
             resultJson = gadget.get_page(Global.AcFunAPIHost,
-                                         "/http/json/exec?func=content.get&id=1999999999&next=true&desc=true",
+                                         "/http/json/exec?func={}&id=1999999999&next=true&desc=true".format(
+                                             Global.AcFunAPIFuncGetArticle),
                                          port=Global.AcFunAPIPort, timeout=10, form="json", retryNum=3, logger=logger)
 
             try:
@@ -52,7 +53,8 @@ def main(mode):
         acDayToday = gadget.date_to_ac_days()
         ## Fetches the latest AID of articles before today.
         cursor.execute(
-            "SELECT id FROM ac_articles WHERE sort_time_ac_day<{} ORDER BY sort_time DESC LIMIT 1".format(acDayToday))
+            "SELECT id FROM ac_articles "
+            "WHERE sort_time_ac_day<{} ORDER BY sort_time DESC LIMIT 1".format(acDayToday))
         if cursor.rowcount > 1:
             earliestAID = cursor.fetchall()[0][0] # TODO: test it.
         else:
@@ -64,8 +66,9 @@ def main(mode):
             if AID % 200 == 0:
                 logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID))
             cursor.execute(
-                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) VALUES ("{}", "{}", {}, {})'.format(
-                    "fullcontent.get", AID, 5, 1))
+                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
+                'VALUES ("{}", "{}", {}, {})'.format(
+                    Global.AcFunAPIFuncGetArticleFull, AID, 5, 1))
         conn.commit()
         logger.add("Requests pushed successfully.")
     elif mode == 2:

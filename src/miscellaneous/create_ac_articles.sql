@@ -9,7 +9,7 @@ USE `trend_acws`;
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8 */;
+/*!40101 SET NAMES 'utf8' */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -31,40 +31,43 @@ CREATE TABLE `ac_articles` (
   `description` varchar(1024) NOT NULL,
   `user_id` int(11) NOT NULL,
   `user_name` varchar(255) NOT NULL,
+  `contribute_time` bigint(20) NOT NULL,
+  `contribute_time_day` int(11) NOT NULL,
+  `contribute_time_ac_day` int(11) NOT NULL,
+  `contribute_time_week` int(11) NOT NULL,
+  `contribute_time_month` int(11) NOT NULL,
+  `contribute_time_year` int(11) NOT NULL,
   `sort_time` bigint(20) NOT NULL,
-  `sort_time_day` int(11) NOT NULL,
-  `sort_time_ac_day` int(11) NOT NULL,
-  `sort_time_week` int(11) NOT NULL,
-  `sort_time_month` int(11) NOT NULL,
-  `sort_time_year` int(11) NOT NULL,
-  `last_feed_back_time` bigint(20) NOT NULL,
+  `sort_time_count` int(11) NOT NULL DEFAULT '1',
+  `last_feedback_time` bigint(20) NOT NULL,
   `img` varchar(255) NOT NULL,
   `content_img` varchar(255) NOT NULL,
-  `views` bigint(20) NOT NULL,
+  `hits` bigint(20) NOT NULL,
   `week_views` int(11) NOT NULL,
   `month_views` int(11) NOT NULL,
   `day_views` int(11) NOT NULL,
   `comments` int(11) NOT NULL,
   `stows` int(11) NOT NULL,
+  `parts` int(11) NOT NULL,
   `score` int(11) NOT NULL,
   `score_trend` int(11) NOT NULL,
   `channel_name` varchar(255) NOT NULL,
   `channel_id` int(11) NOT NULL,
   `tags` text NOT NULL,
-  `time_video` int(11) DEFAULT NULL,
-  `survive` int(11) NOT NULL,
+  `survive` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `sort_time` (`sort_time`),
-  KEY `sort_date` (`sort_time_day`,`sort_time_month`,`sort_time_year`),
-  KEY `sort_week` (`sort_time_week`),
-  KEY `views` (`views`),
+  KEY `views` (`hits`),
   KEY `comments` (`comments`),
   KEY `stows` (`stows`),
   KEY `score` (`score`),
   KEY `score_trend` (`score_trend`),
-  KEY `time_video` (`time_video`),
-  KEY `sort_day` (`sort_time_ac_day`)
+  KEY `contribute_date` (`contribute_time_day`,`contribute_time_month`,`contribute_time_year`),
+  KEY `contribute_week` (`contribute_time_week`),
+  KEY `contribute_day` (`contribute_time_ac_day`),
+  KEY `contribute_time` (`contribute_time`),
+  KEY `parts` (`parts`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -77,4 +80,4 @@ CREATE TABLE `ac_articles` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2013-12-22  5:43:27
+-- Dump completed on 2013-12-24  1:37:46

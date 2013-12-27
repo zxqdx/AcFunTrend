@@ -51,16 +51,18 @@ def write_file(filename, content, form="json", append=True, end=True):
         raise e
     return True
 
+
 def read_file(filename, form="json"):
     try:
         file = open(filename, "r")
         content = file.read().strip()
-        if form=="json":
+        if form == "json":
             content = json.loads(content)
         file.close()
         return content
     except Exception as e:
         raise e
+
 
 def remove_file(filename):
     try:
@@ -107,10 +109,19 @@ def date_to_ac_days(d=None):
     start = datetime.datetime(2007, 6, 4)
     return (d - start).days + 1
 
+
+def date_to_ac_weeks(d=None):
+    if not d:
+        d = datetime.datetime.now()
+    start = datetime.datetime(2007, 6, 4)
+    return (d - start).days // 7 + 1
+
+
 def datetime_to_timestamp(d=None):
     if not d:
         d = datetime.datetime.now()
-    return int(d.timestamp()*1000)
+    return int(d.timestamp() * 1000)
+
 
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
@@ -140,13 +151,16 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
         resultJson = None
         try:
             resultJson = json.loads(resultWrapper[1])
-        except:
+        except Exception:
             raise_exception("Failed to convert the str to JSON.")
         return resultJson
     else:
         raise NotImplementedError("Unknown format: {}".format(form))
 
+
 if __name__ == '__main__':
     # write_file("test", {"erwe": "wrwer"}, end=False)
     print(date_to_ac_days(datetime.datetime(2007, 6, 4)))
     print(date_to_ac_days(datetime.datetime.now()))
+    print(date_to_ac_weeks())
+    print(date_to_ac_weeks(datetime.datetime(2007, 6, 11)))
