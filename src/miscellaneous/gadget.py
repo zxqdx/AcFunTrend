@@ -123,6 +123,13 @@ def datetime_to_timestamp(d=None):
     return int(d.timestamp() * 1000)
 
 
+def timestamp_to_datetime(ts, tz=8):
+    try:
+        d = datetime.datetime.utcfromtimestamp(ts)
+    except OSError:
+        d = datetime.datetime.utcfromtimestamp(ts / 1000)
+    return d + datetime.timedelta(hours=tz)
+
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
         resultWrapper[0] = pool.request('GET', url)
@@ -151,8 +158,8 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
         resultJson = None
         try:
             resultJson = json.loads(resultWrapper[1])
-        except Exception:
-            raise_exception("Failed to convert the str to JSON.")
+        except Exception as e:
+            raise_exception(str(e))
         return resultJson
     else:
         raise NotImplementedError("Unknown format: {}".format(form))

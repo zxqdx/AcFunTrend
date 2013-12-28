@@ -311,7 +311,6 @@ class AcWsReceiver(threading.Thread):
                             "New channel: id={}, name={}".format(result["channelId"], result["channelName"]))
 
                     if result["statusCode"] == 200: # Article exists.
-                        # Adds the information into the database.
                         result = result["result"]
                         if result["id"] != rId:
                             raise Exception("Request ID and rID mismatch.")
@@ -521,36 +520,94 @@ class AcWsReceiver(threading.Thread):
                                                                eachTag["managerId"]))
 
                         # ac_delta
-                        self.logger.add("Adding ac{} into ac_delta ...".format(rId))
-                        # TODO MARK.
-                        # HINT Don't forget update sortTime if modified.
-
+                        acDay = gadget.date_to_ac_days(gadget.timestamp_to_datetime(result["sortTime"]))
+                        if articleHasRecord:
+                            self.logger.add("Updating ac{} into ac_delta ...".format(rId))
+                            self.cursor.execute('SELECT days, hits, comments, stows, sorts'
+                                                'FROM ac_delta WHERE id={}'.format(rId))
+                            if self.cursor.rowcount > 0:
+                                deltaHasRecord = True
+                                dayList, hitList, commentList, stowList, sortList = self.cursor.fetchall()[0]
+                                dayList, hitList, commentList, stowList, sortList = json.loads(dayList), json.loads(
+                                    hitList), json.loads(commentList), json.loads(stowList), json.loads(sortList)
+                                try:
+                                    dayIndex = dayList.index(acDay)
+                                    hitList[dayIndex] = result["views"]
+                                    commentList[dayIndex] = result["comments"]
+                                    stowList[dayIndex] = result["stows"]
+                                    if sortTimeModified:
+                                        sortList[acDay] += 1
+                                except ValueError:
+                                    dayList.append(acDay)
+                                    hitList.append(result["views"])
+                                    commentList.append(result["comments"])
+                                    stowList.append(result["stows"])
+                                    sortList[acDay] = 1
+                            else: # This should not happen.
+                                deltaHasRecord = False
+                        if (not articleHasRecord) or (not deltaHasRecord):
+                            self.logger.add("Inserting ac{} into ac_delta".format(rId))
+                            self.cursor.execute('INSERT INTO ac_delta('
+                                                'id, days, hits, comments, stows, sorts'
+                                                ') VALUES ('
+                                                '{}, "{}", "{}", "{}", "{}", "{}"'
+                                                ')'.format(rId, [acDay], [result["views"]], [result["comments"]],
+                                                           [result["stows"]], {acDay: 1}))
+                        self.conn.commit()
                     elif result["statusCode"] == 402: # Article does not exist.
                         self.logger.add("Article does not exist: ac{}".format(rId))
                         if articleHasRecord and isSurvive:
                             # Changes survive in ac_articles.
                             self.logger.add("Changing survive mode of ac{} to 0 ...".format(rId))
                             self.cursor.execute("UPDATE ac_articles SET survive=0 WHERE id={}".format(rId))
-                            # Changes ac_users.
-
-                            # Changes ac_channels.
-
-                            # Changes ac_tags.
-
+                            self.conn.commit()
                     else:
                         self.logger.add(
                             "Unexpected error at ac{}: statusCode={}, result={}".format(rId, result["statusCode"],
                                                                                         result["result"]), "SEVERE")
                 elif rFunc == Global.AcFunAPIFuncGetUserFull: # User.
-                    # TODO Parses user info.
-                    # REMINDER Don't forget to refresh userName!
-                    pass
+                    if result["statusCode"] == 200:
+                        result = result["result"]
+                        if result["id"] != rId:
+                            raise Exception("Request ID and rID mismatch.")
+
+                        self.logger.add("Updating user{} into ac_users ...".format(rId))
+                        sqlUserInfo = ''
+                        if "registerTime" in result:
+                            sqlUserInfo += ', register_time={}'.format(result["registerTime"])
+                        if "rank" in result:
+                            sqlUserInfo += ', rank={}'.format(result["rank"])
+                        if "gender" in result:
+                            if result["gender"]:
+                                result["gender"] = 0 # Male.
+                            else:
+                                result["gender"] = 1 # Female.
+                            sqlUserInfo += ', gender={}'.format(result["gender"])
+                        if "sextrend" in result:
+                            sqlUserInfo += ', sex_trend={}'.format(result["sextrend"])
+                        if "comefrom" in result:
+                            sqlUserInfo += ', come_from="{}"'.format(result["comefrom"])
+                        if "img" in result:
+                            sqlUserInfo += ', img="{}"'.format(result["img"])
+                        if "lastLoginTime" in result:
+                            sqlUserInfo += ', last_login_time={}'.format(result["lastLoginTime"])
+                        if "onlineDuration" in result:
+                            sqlUserInfo += ', online_duration={}'.format(result["onlineDuration"])
+                        self.cursor.execute('UPDATE ac_users SET '
+                                            'name="{}"{}'
+                                            'WHERE id={}'.format(result["name"], sqlUserInfo, rId))
+                        self.conn.commit()
+                    elif result["statusCode"] == 402:
+                        raise Exception("Failed to get user info. Result={}".format(result["result"]))
+                    else:
+                        self.logger.add(
+                            "Unexpected error at user{}: statusCode={}, result={}".format(rId, result["statusCode"],
+                                                                                          result["result"]), "SEVERE")
                 else: # Unrecognized.
                     self.logger.add("Unrecognized func: {}.".format(rFunc), "SEVERE")
             except Exception as e:
                 self.logger.add("Received invalid data. Skipped.", "WARNING", ex=e)
 
-            self.conn.commit()
             self.count += 1
             time.sleep(Global.AcFunAPIWsCycleGap)
 
