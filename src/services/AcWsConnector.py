@@ -243,9 +243,13 @@ class AcWsReceiver(threading.Thread):
                     highestUploaderScore = 0
                     self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
                 try:
-                    self.cursor.execute("SELECT score_trend FROM ac_channels ORDER BY score_trend DESC LIMIT 1")
+                    self.cursor.execute("SELECT id, score_trend FROM ac_channels ORDER BY score_trend DESC")
                     assert self.cursor.rowcount > 0
-                    highestChannelScore = self.cursor.fetchall()[0][0]
+                    fetchResult = self.cursor.fetchall()
+                    highestChannelScore = fetchResult[0][1]
+                    channelScoreList = {}
+                    for eachChannel in fetchResult:
+                        channelScoreList[eachChannel[0]] = eachChannel[1]
                 except Exception as e:
                     highestChannelScore = 0
                     self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
@@ -311,8 +315,24 @@ class AcWsReceiver(threading.Thread):
                         for eachTag in result["tags"]:
                             tagList.append([eachTag[2], eachTag[3]])
 
-                        # TODO Calculate score_trend of the article.
+                        if "text" not in result:
+                            # TODO Add a long-term solution.
+                            resultParts = 0
+                        else:
+                            resultParts = result["text"].count("[NextPage]")
+                            if resultParts == 0:
+                                resultParts = 1
 
+                        if result["typeId"] == 3: # TODO Adjust this when necessary.
+                            isOriginal = True
+                        else:
+                            isOriginal = False
+
+                        # TODO Calculate score_trend of the article.
+                        articleScore = gadget.calc_score(result["views"], result["comments"], result["stows"],
+                                                         resultParts, isOriginal, userScore, highestUploaderScore,
+                                                         channelScoreList[result["channelId"]], highestChannelScore,
+                                                         userRank)
 
                         if articleHasRecord:
                             self.logger.add("Updating ac{}@ac_articles ...".format(rId))
@@ -340,8 +360,8 @@ class AcWsReceiver(threading.Thread):
                                                                      result["img"], result["contentImg"],
                                                                      result["views"], result["weekViews"],
                                                                      result["monthViews"], result["dayViews"],
-                                                                     result["comments"], result["stows"], RESULT_PARTS,
-                                                                     result["score"], TREND_SCORE_HERE,
+                                                                     result["comments"], result["stows"], resultParts,
+                                                                     result["score"], articleScore,
                                                                      result["channelName"], result["channelId"],
                                                                      tagList, rId))
                         else:
@@ -372,8 +392,8 @@ class AcWsReceiver(threading.Thread):
                                                            result["img"], result["contentImg"], result["views"],
                                                            result["weekViews"], result["monthViews"],
                                                            result["dayViews"], result["comments"],
-                                                           result["stows"], RESULT_PARTS, result["score"],
-                                                           TREND_SCORE_HERE, result["channelName"], result["channelId"],
+                                                           result["stows"], resultParts, result["score"],
+                                                           articleScore, result["channelName"], result["channelId"],
                                                            tagList))
                         # ac_users
                         self.logger.add("Adding ac{} into ac_users ...".format(rId))

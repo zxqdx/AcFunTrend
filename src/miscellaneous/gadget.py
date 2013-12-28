@@ -158,9 +158,80 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
         raise NotImplementedError("Unknown format: {}".format(form))
 
 
+def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestUploaderScore, channelScore,
+               highestChannelScore, uploaderRank):
+    import math
+
+    GOLDEN_SECTION = (1 + math.sqrt(5)) / 2
+
+    hit_score = hits * ((1 / e) ** math.log(x / 100, 10))
+    comment_score = comments * 20 / (
+        (comments * (1 / e ^ (math.log(comments, 10)))) / (math.e / (GOLDEN_SECTION - 1) + 1))
+    if stows <= 50000:
+        stow_score = stows * ((GOLDEN_SECTION - 1) + x / 100000) ** (1 - math.log(stows, 10) / GOLDEN_SECTION)
+    else:
+        stow_score = 40432
+    if parts == 0:
+        part_score = 0
+    else:
+        part_score = 100 / (8 ** math.log(parts, 10)) * x ** 1.5
+    score_trend = hit_score + comment_score + stow_score + part_score
+
+    # Original.
+    if isOriginal:
+        score_trend *= 1.05
+    # Hits-Stows.
+    if stows == 0:
+        score_trend *= 0.99
+    else:
+        if hits / stows > 200:
+            z = (hits / stows - 200) / 1000
+            if z <= 1:
+                t = z
+            else:
+                t = 1
+            score_trend *= (1 - t / 100)
+    # Comments-Stows.
+    if stows == 0:
+        score_trend *= 0.99
+    else:
+        if comments / stows > 20:
+            z = (hits / stows - 20) / 1000
+            if z <= 1:
+                t = z
+            else:
+                t = 1
+            score_trend *= (1 - t / 100)
+    # Parts.
+    if parts != 0:
+        score_trend *= (1 / parts) ** 0.01
+    # Uploader.
+    if highestUploaderScore != 0:
+        if uploaderScore == 0:
+            uploaderScore = score_trend
+        if highestUploaderScore / uploaderScore <= 2000:
+            score_trend *= (1 + ((highestUploaderScore - uploaderScore) / uploaderScore) / 10000)
+        else:
+            score_trend *= 1.2
+    # Channel.
+    if highestChannelScore != 0:
+        if channelScore == 0:
+            channelScore = score_trend
+        if highestChannelScore / channelScore <= 1000:
+            score_trend *= (1 + ((highestChannelScore - channelScore) / channelScore) / 2000)
+        else:
+            score_trend *= 1.5
+    # Rank.
+    if uploaderRank != 0:
+        score_trend *= (1 + (uploaderRank - 1) / 10000)
+
+    return score_trend
+
+
 if __name__ == '__main__':
     # write_file("test", {"erwe": "wrwer"}, end=False)
-    print(date_to_ac_days(datetime.datetime(2007, 6, 4)))
-    print(date_to_ac_days(datetime.datetime.now()))
-    print(date_to_ac_weeks())
-    print(date_to_ac_weeks(datetime.datetime(2007, 6, 11)))
+    # print(date_to_ac_days(datetime.datetime(2007, 6, 4)))
+    # print(date_to_ac_days(datetime.datetime.now()))
+    # print(date_to_ac_weeks())
+    # print(date_to_ac_weeks(datetime.datetime(2007, 6, 11)))
+    pass
