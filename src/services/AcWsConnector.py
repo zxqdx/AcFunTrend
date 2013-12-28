@@ -235,12 +235,13 @@ class AcWsReceiver(threading.Thread):
             if self.count % 10000 == 0:
                 # Gets the highest uploader score and the highest channel score.
                 self.logger.add("Fetching the highest uploader % channel score ...")
+                highestUploaderScore = 0
+                highestChannelScore = 0
                 try:
                     self.cursor.execute("SELECT score_trend FROM ac_users ORDER BY score_trend DESC LIMIT 1")
                     assert self.cursor.rowcount > 0
                     highestUploaderScore = self.cursor.fetchall()[0][0]
                 except Exception as e:
-                    highestUploaderScore = 0
                     self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
                 try:
                     self.cursor.execute("SELECT id, score_trend FROM ac_channels ORDER BY score_trend DESC")
@@ -251,7 +252,6 @@ class AcWsReceiver(threading.Thread):
                     for eachChannel in fetchResult:
                         channelScoreList[eachChannel[0]] = eachChannel[1]
                 except Exception as e:
-                    highestChannelScore = 0
                     self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
                 self.logger.add(
                     "Highest score: uploader = {}, channel = {}".format(highestUploaderScore, highestChannelScore))
@@ -270,14 +270,21 @@ class AcWsReceiver(threading.Thread):
                 # Parses the information.
                 if rFunc == Global.AcFunAPIFuncGetArticleFull: # Article.
                     # Checks whether the article has record in database.
-                    self.cursor.execute("SELECT survive FROM ac_articles WHERE id={}".format(rId))
+                    self.cursor.execute('SELECT survive, hits, comments, stows, parts, '
+                                        'score, score_trend, user_id, channel_id, tags, type_id '
+                                        'FROM ac_articles WHERE id={}'.format(rId))
                     articleHasRecord = self.cursor.rowcount > 0
-                    isSurvive = None
                     if articleHasRecord:
-                        isSurvive = self.cursor.fetchall()[0][0] == 1
+                        fetchResult = self.cursor.fetchall()[0]
+                        isSurvive = fetchResult[0] == 1
+                        previousHits, previousComments, previousStows, \
+                        previousParts, previousScore, previousScoreTrend, \
+                        previousUserId, previousChannelId, previousTags, previousTypeId = fetchResult[1:]
+                        previousTags = json.loads(previousTags)
                         self.logger.add(
                             "The database has ac{}: {}. Survive: {}".format(rId, articleHasRecord, isSurvive))
                     else:
+                        isSurvive = False
                         self.logger.add("This is a new article: ac{}".format(rId))
 
                     if result["statusCode"] == 200: # Article exists.
@@ -323,16 +330,20 @@ class AcWsReceiver(threading.Thread):
                             if resultParts == 0:
                                 resultParts = 1
 
+                        if result["typeId"] > 4 or result["typeId"] < 1:
+                            self.logger.add("Unknown typeId={} occurs in ac{}.".format(result["typeId"], rId), "SEVERE")
+                            result["typeId"] = 1
                         if result["typeId"] == 3: # TODO Adjust this when necessary.
                             isOriginal = True
                         else:
                             isOriginal = False
 
-                        # TODO Calculate score_trend of the article.
+                        # Calculates score_trend of the article.
                         articleScore = gadget.calc_score(result["views"], result["comments"], result["stows"],
                                                          resultParts, isOriginal, userScore, highestUploaderScore,
                                                          channelScoreList[result["channelId"]], highestChannelScore,
                                                          userRank)
+                        self.logger.add("The score of the article is {}".format(articleScore))
 
                         if articleHasRecord:
                             self.logger.add("Updating ac{}@ac_articles ...".format(rId))
@@ -391,16 +402,50 @@ class AcWsReceiver(threading.Thread):
                                                            result["sortTime"], result["lastFeedbackTime"],
                                                            result["img"], result["contentImg"], result["views"],
                                                            result["weekViews"], result["monthViews"],
-                                                           result["dayViews"], result["comments"],
-                                                           result["stows"], resultParts, result["score"],
-                                                           articleScore, result["channelName"], result["channelId"],
-                                                           tagList))
+                                                           result["dayViews"], result["comments"], result["stows"],
+                                                           resultParts, result["score"], articleScore,
+                                                           result["channelName"], result["channelId"], tagList))
                         # ac_users
-                        self.logger.add("Adding ac{} into ac_users ...".format(rId))
-                        # TODO MARK.
+                        ## Removes old data.
+                        if articleHasRecord and userHasRecord:
+                            self.logger.add("Removing old data of ac{} from ac_users ...".format(rId))
+                            self.cursor.execute('UPDATE ac_users SET '
+                                                'hits=hits-{}, comments=comments-{}, stows=stows-{}, '
+                                                'parts=parts-{}, score=score-{}, score_trend=score_trend-{}, '
+                                                'contains=contains-1, contains_{}=contains_{}-1 '
+                                                'WHERE id={}'.format(previousHits, previousComments,
+                                                                     previousStows, previousParts,
+                                                                     previousScore, previousScoreTrend,
+                                                                     previousTypeId, previousTypeId, previousUserId))
+                        ## Adds new data.
+                        if userHasRecord:
+                            self.logger.add("Updating new data of ac{} into ac_users ...".format(rId))
+                            self.cursor.execute('UPDATE ac_users SET '
+                                                'hits=hits+{}, comments=comments+{}, stows=stows+{}, '
+                                                'parts=parts+{}, score=score+{}, score_trend=score_trend+{}, '
+                                                'contains=contains+1, contains_{}=contains_{}+1 '
+                                                'WHERE id={}'.format(result["views"], result["comments"],
+                                                                     result["stows"], resultParts, result["score"],
+                                                                     articleScore, result["typeId"], result["typeId"],
+                                                                     result["userId"]))
+                        else:
+                            self.logger.add("Inserting new data of ac{} into ac_users ...".format(rId))
+                            self.cursor.execute('INSERT INTO ac_users ('
+                                                'id, name, hits, comments, stows, parts, '
+                                                'score, score_trend, contains, contains_{}'
+                                                ') VALUES {'
+                                                '{}, "{}", {}, {}, {}, {}, '
+                                                '{}, {}, 1, 1'
+                                                '}'.format(result["typeId"], result["userId"], result["userName"],
+                                                           result["views"], result["comments"], result["stows"],
+                                                           resultParts, result["score"], articleScore))
 
                         # ac_channels
                         self.logger.add("Adding ac{} into ac_channels ...".format(rId))
+
+                        # TODO MARK.
+
+                        # ac_tags
                         # TODO MARK.
 
                         # ac_delta
@@ -426,12 +471,14 @@ class AcWsReceiver(threading.Thread):
                                                                                         result["result"]), "SEVERE")
                 elif rFunc == Global.AcFunAPIFuncGetUserFull: # User.
                     # TODO Parses user info.
+                    # REMINDER Don't forget to refresh userName!
                     pass
                 else: # Unrecognized.
                     self.logger.add("Unrecognized func: {}.".format(rFunc), "SEVERE")
             except Exception as e:
                 self.logger.add("Received invalid data. Skipped.", "WARNING", ex=e)
 
+            self.conn.commit()
             self.count += 1
             time.sleep(Global.AcFunAPIWsCycleGap)
 

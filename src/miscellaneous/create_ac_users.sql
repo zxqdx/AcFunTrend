@@ -34,6 +34,10 @@ CREATE TABLE `ac_users` (
   `score` bigint(20) NOT NULL,
   `score_trend` bigint(20) NOT NULL,
   `contains` int(11) NOT NULL,
+  `contains_1` int(11) NOT NULL,
+  `contains_2` int(11) NOT NULL,
+  `contains_3` int(11) NOT NULL,
+  `contains_4` int(11) NOT NULL,
   `register_time` bigint(20) DEFAULT NULL,
   `rank` int(11) DEFAULT NULL,
   `gender` int(11) DEFAULT NULL,
@@ -51,7 +55,11 @@ CREATE TABLE `ac_users` (
   KEY `score_trend` (`score_trend`),
   KEY `contains` (`contains`),
   KEY `online_duration` (`online_duration`),
-  KEY `parts` (`parts`)
+  KEY `parts` (`parts`),
+  KEY `contains_1` (`contains_1`),
+  KEY `contains_2` (`contains_2`),
+  KEY `contains_3` (`contains_3`),
+  KEY `contains_4` (`contains_4`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -64,4 +72,4 @@ CREATE TABLE `ac_users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2013-12-24  1:38:35
+-- Dump completed on 2013-12-27 20:08:52
