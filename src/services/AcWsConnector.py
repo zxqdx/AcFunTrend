@@ -287,27 +287,34 @@ class AcWsReceiver(threading.Thread):
                         isSurvive = False
                         self.logger.add("This is a new article: ac{}".format(rId))
 
+                    # Checks whether the uploader has record in database.
+                    self.cursor.execute(
+                        'SELECT score_trend, rank FROM ac_users WHERE id={}'.format(result["userId"]))
+                    if self.cursor.rowcount > 0:
+                        userHasRecord = True
+                        fetchResult = self.cursor.fetchall()[0]
+                        userScore = fetchResult[0]
+                        userRank = fetchResult[1]
+                    else:
+                        userHasRecord = False
+                        userScore = 0
+                        userRank = 0
+                    self.logger.add(
+                        "User {} has record = {}, score = {}, rank = {}".format(result["userId"], userHasRecord,
+                                                                                userScore, userRank))
+
+                    # Checks whether the channel has record in database.
+                    self.cursor.execute('SELECT id FROM ac_channels WHERE id={}'.format(result["channelId"]))
+                    channelHasRecord = self.cursor.rowcount > 0
+                    if not channelHasRecord:
+                        self.logger.add(
+                            "New channel: id={}, name={}".format(result["channelId"], result["channelName"]))
+
                     if result["statusCode"] == 200: # Article exists.
                         # Adds the information into the database.
                         result = result["result"]
                         if result["id"] != rId:
                             raise Exception("Request ID and rID mismatch.")
-
-                        # Checks whether the uploader has record in database.
-                        self.logger.add("Checking whether the user has record ...")
-                        self.cursor.execute(
-                            "SELECT score_trend, rank FROM ac_users WHERE id={}".format(result["userId"]))
-                        if self.cursor.rowcount > 0:
-                            userHasRecord = True
-                            fetchResult = self.cursor.fetchall()[0]
-                            userScore = fetchResult[0]
-                            userRank = fetchResult[1]
-                        else:
-                            userHasRecord = False
-                            userScore = 0
-                            userRank = 0
-                        self.logger.add(
-                            "Has record = {}, score = {}, rank = {}".format(userHasRecord, userScore, userRank))
 
                         # ac_articles
                         self.logger.add("Adding ac{} into ac_articles ...".format(rId))
@@ -318,9 +325,9 @@ class AcWsReceiver(threading.Thread):
 
                         if "tags" not in result:
                             result["tags"] = []
-                        tagList = []
+                        tagList = [] # tagList only store tagId and tagName
                         for eachTag in result["tags"]:
-                            tagList.append([eachTag[2], eachTag[3]])
+                            tagList.append([eachTag["tagId"], eachTag["tagName"]])
 
                         if "text" not in result:
                             # TODO Add a long-term solution.
@@ -363,7 +370,7 @@ class AcWsReceiver(threading.Thread):
                                                 'hits={}, week_views={}, month_views={}, day_views={}, '
                                                 'comments={}, stows={}, parts={}, score={}, score_trend={}, '
                                                 'channel_name="{}", channel_id={}, survive=1, '
-                                                'tags={} ' # tags only store tagId and tagName
+                                                'tags={} '
                                                 'WHERE id={}'.format(result["typeId"], result["title"],
                                                                      result["description"], result["userId"],
                                                                      result["userName"], result["sortTime"],
@@ -407,7 +414,7 @@ class AcWsReceiver(threading.Thread):
                                                            result["channelName"], result["channelId"], tagList))
                         # ac_users
                         ## Removes old data.
-                        if articleHasRecord and userHasRecord:
+                        if articleHasRecord:
                             self.logger.add("Removing old data of ac{} from ac_users ...".format(rId))
                             self.cursor.execute('UPDATE ac_users SET '
                                                 'hits=hits-{}, comments=comments-{}, stows=stows-{}, '
@@ -441,12 +448,77 @@ class AcWsReceiver(threading.Thread):
                                                            resultParts, result["score"], articleScore))
 
                         # ac_channels
-                        self.logger.add("Adding ac{} into ac_channels ...".format(rId))
-
-                        # TODO MARK.
+                        ## Removes old data.
+                        if articleHasRecord:
+                            self.logger.add("Removing old data of ac{} from ac_channels ...".format(rId))
+                            self.cursor.execute('UPDATE ac_channels SET '
+                                                'hits=hits-{}, comments=comments-{}, stows=stows-{}, '
+                                                'parts=parts-{}, score=score-{}, score_trend=score_trend-{}, '
+                                                'contains=contains-1 '
+                                                'WHERE id={}'.format(previousHits, previousComments,
+                                                                     previousStows, previousParts,
+                                                                     previousScore, previousScoreTrend,
+                                                                     previousChannelId))
+                        ## Adds new data.
+                        if channelHasRecord:
+                            self.logger.add("Updating new data of ac{} into ac_channels ...".format(rId))
+                            self.cursor.execute('UPDATE ac_channels SET '
+                                                'hits=hits+{}, comments=comments+{}, stows=stows+{}, '
+                                                'parts=parts+{}, score=score+{}, score_trend=score_trend+{}, '
+                                                'contains=contains+1 '
+                                                'WHERE id={}'.format(result["views"], result["comments"],
+                                                                     result["stows"], resultParts, result["score"],
+                                                                     articleScore, result["channelId"]))
+                        else:
+                            self.logger.add("Inserting new data of ac{} into ac_channels ...".format(rId))
+                            self.cursor.execute('INSERT INTO ac_channels ('
+                                                'id, name, hits, comments, stows, parts, '
+                                                'score, score_trend, contains'
+                                                ') VALUES {'
+                                                '{}, "{}", {}, {}, {}, {}, '
+                                                '{}, {}, 1'
+                                                '}'.format(result["channelId"], result["channelName"],
+                                                           result["views"], result["comments"], result["stows"],
+                                                           resultParts, result["score"], articleScore))
 
                         # ac_tags
-                        # TODO MARK.
+                        ## Removes old data.
+                        if articleHasRecord:
+                            self.logger.add("Removing old data of ac{} from ac_tags ...".format(rId))
+                            for eachPreviousTag in previousTags:
+                                self.cursor.execute('UPDATE ac_tags SET '
+                                                    'hits=hits-{}, comments=comments-{}, stows=stows-{}, '
+                                                    'parts=parts-{}, score=score-{}, score_trend=score_trend-{}, '
+                                                    'contains=contains-1 '
+                                                    'WHERE id={}'.format(previousHits, previousComments,
+                                                                         previousStows, previousParts,
+                                                                         previousScore, previousScoreTrend,
+                                                                         eachPreviousTag[0]))
+                        ## Adds new data.
+                        for eachTag in result["tags"]:
+                            self.cursor.execute('SELECT id FROM ac_tags WHERE id={}'.format(eachTag["tagId"]))
+                            tagHasRecord = self.cursor.rowcount > 0
+                            if tagHasRecord:
+                                self.logger.add("Updating new data of ac{} into ac_tags ...".format(rId))
+                                self.cursor.execute('UPDATE ac_tags SET '
+                                                    'hits=hits+{}, comments=comments+{}, stows=stows+{}, '
+                                                    'parts=parts+{}, score=score+{}, score_trend=score_trend+{}, '
+                                                    'contains=contains+1 '
+                                                    'WHERE id={}'.format(result["views"], result["comments"],
+                                                                         result["stows"], resultParts, result["score"],
+                                                                         articleScore, eachTag["tagId"]))
+                            else:
+                                self.logger.add("Inserting new data of ac{} into ac_tags ...".format(rId))
+                                self.cursor.execute('INSERT INTO ac_tags ('
+                                                    'id, name, hits, comments, stows, parts, '
+                                                    'score, score_trend, contains, manager_id'
+                                                    ') VALUES {'
+                                                    '{}, "{}", {}, {}, {}, {}, '
+                                                    '{}, {}, 1, {}'
+                                                    '}'.format(eachTag["tagId"], result["channelName"],
+                                                               result["views"], result["comments"], result["stows"],
+                                                               resultParts, result["score"], articleScore,
+                                                               eachTag["managerId"]))
 
                         # ac_delta
                         self.logger.add("Adding ac{} into ac_delta ...".format(rId))

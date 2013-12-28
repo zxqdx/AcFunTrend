@@ -25,20 +25,20 @@ DROP TABLE IF EXISTS `ac_tags`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ac_tags` (
-  `tag_id` int(11) NOT NULL,
-  `tag_name` varchar(255) NOT NULL,
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
   `manager_id` int(11) NOT NULL,
-  `ref` bigint(20) NOT NULL,
   `hits` bigint(20) NOT NULL,
   `comments` bigint(20) NOT NULL,
   `stows` bigint(20) NOT NULL,
   `parts` bigint(20) NOT NULL,
   `score` bigint(20) NOT NULL,
   `score_trend` bigint(20) NOT NULL,
-  PRIMARY KEY (`tag_id`),
+  `contains` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
   KEY `manager_id` (`manager_id`),
   KEY `hits` (`hits`),
-  KEY `ref` (`ref`),
+  KEY `ref` (`contains`),
   KEY `comments` (`comments`),
   KEY `stows` (`stows`),
   KEY `score` (`score`),
@@ -56,4 +56,4 @@ CREATE TABLE `ac_tags` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2013-12-24  1:36:25
+-- Dump completed on 2013-12-28  5:02:53
