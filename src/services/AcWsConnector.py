@@ -41,26 +41,35 @@ class AcWsConnector(threading.Thread):
             raise e
 
         # Connects to AcFun WebSocket.
-        self.logger.add("Connecting to AcFun WebSocket...")
+        self.logger.add("Connecting to AcFun WebSocket...", "DEBUG")
         from websocket import create_connection
 
         try:
             self.ws = create_connection(Global.AcFunAPIWsUrl)
         except Exception as e:
             self.logger.add("Failed to connect to AcFun WebSocket.", "SEVERE", ex=e)
-        self.logger.add("Authenticating...")
+        self.logger.add("Authenticating...", "DEBUG")
         self.ws.send('{{func:"auth","key":"{}","secret":"{}"}}'.format(Global.AcFunAPIWsKey, Global.AcFunAPIWsSecret))
         try:
             result = json.loads(self.ws.recv())
-            if result["success"]:
-                self.logger.add("Authenticate complete.")
+            isSuccess = False
+            if "success" in result:
+                isSuccess = result["success"]
+            elif "result" in result:
+                assert type(result["result"]) == bool, result["result"]
+                isSuccess = result["result"]
+            if isSuccess:
+                self.logger.add("Authenticate complete.", "DEBUG")
             else:
                 raise Exception("Connection maintains but authenticate failed.")
         except Exception as e:
             self.logger.add("Failed to authenticate.", "SEVERE", ex=e)
+            self.close()
+            self.logger.close()
+            raise SystemExit
 
         # Sets up threads.
-        self.logger.add("Setting up threads.")
+        self.logger.add("Setting up threads.", "DEBUG")
         self.acWsSender = AcWsSender(self.ws)
         self.acWsReceiver = AcWsReceiver(self.ws)
         self.acWsSender.daemon = True
@@ -68,7 +77,7 @@ class AcWsConnector(threading.Thread):
 
     def run(self):
         # Starts threads.
-        self.logger.add("Starting threads...")
+        self.logger.add("Starting threads...", "DEBUG")
         self.acWsReceiver.start()
         self.acWsSender.start()
         while True:
@@ -110,19 +119,23 @@ class AcWsSender(threading.Thread):
 
     def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsSender")
-        self.logger = Logger(name)
+        self.logger = Logger("AcWsSender")
         self.ws = ws
         try:
-            self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
-                                                                                  Global.mysqlAcWsConnectorDB,
-                                                                                  Global.mysqlUser))
+            self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
+                                                                                   Global.mysqlAcWsConnectorDB,
+                                                                                   Global.mysqlUser), "DEBUG")
             self.conn = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
+            self.conn.set_charset("utf8")
             self.cursor = self.conn.cursor()
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
             raise e
+
+    def escape_string(self, s):
+        return self.conn.escape_string(s)
 
     def run(self):
         while True:
@@ -131,20 +144,19 @@ class AcWsSender(threading.Thread):
             requestList = []
             try:
                 # Gets the next 100 requests from ACWS Queue.
-                self.logger.add("Fetching the next 100 requests from ACWS Queue...")
+                self.logger.add("Fetching the next 100 requests from ACWS Queue ...")
                 self.cursor.execute(
                     'SELECT request_id, func, id, requested FROM trend_acws_queue '
                     'WHERE requested=0 ORDER BY priority LIMIT 100')
                 newRequestList = self.cursor.fetchall()
-                self.logger.add("Fetched {} requests".format(len(newRequestList)))
+                self.logger.add("Fetched {} requests.".format(len(newRequestList)), "DEBUG")
                 requestList.extend(newRequestList)
 
                 # Gets all the timed out requests.
-                self.logger.add("Fetching all  the timed out requests...")
-                self.cursor.execute(
-                    'SELECT request_id, func, id, retry_num, max_retry_num, priority FROM trend_acws_queue '
-                    'WHERE requested=1 and expire_time<{}'.format(
-                        gadget.datetime_to_timestamp))
+                self.logger.add("Fetching all the timed out requests ...")
+                self.cursor.execute('SELECT request_id, func, id, retry_num, max_retry_num, priority '
+                                    'FROM trend_acws_queue '
+                                    'WHERE requested=1 and expire_time<{}'.format(gadget.datetime_to_timestamp()))
                 timedOutRequestList = self.cursor.fetchall()
 
                 # Retries the request if retryNum <= maxRetryNum. Abandons if retryNum > maxRetryNum.
@@ -152,28 +164,37 @@ class AcWsSender(threading.Thread):
                     if eachTimedOutRequest[3] <= eachTimedOutRequest[4]: # Retries.
                         requestList.append((eachTimedOutRequest[0], eachTimedOutRequest[1], eachTimedOutRequest[2], 1))
                         self.logger.add(
-                            "Retries request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]),
-                            "WARNING")
+                            "Retries request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]))
                     else: # Abandons.
                         self.cursor.execute(
                             'DELETE FROM trend_acws_queue WHERE request_id={}'.format(eachTimedOutRequest[0]))
                         self.logger.add(
-                            "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]),
-                            "WARNING")
+                            "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]))
+                        self.conn.commit()
             except Exception as e:
                 self.logger.add("Error occurs during processing the AcWs Queue.", "SEVERE", ex=e)
                 raise e
 
             # Sends the request and updates AcWs Queue.
-            for eachRequest in requestList:
+            requestListLength = len(requestList)
+            for x in range(requestListLength):
+                eachRequest = requestList[x]
                 # Sends the request.
+                if x % 50 == 0:
+                    debugLevel = "DEBUG"
+                else:
+                    debugLevel = "DETAIL"
                 self.logger.add(
-                    "Sending request {}: func={}, id={}, requested={} ...".format(eachRequest[0], eachRequest[1],
-                                                                                  eachRequest[2], eachRequest[3]))
+                    "{}/{} Sending request {}: func={}, id={}, requested={} ...".format(x, requestListLength,
+                                                                                        eachRequest[0], eachRequest[1],
+                                                                                        eachRequest[2], eachRequest[3]),
+                    debugLevel)
                 try:
                     self.ws.send(
-                        '{{func:"{}",id:"[]",requestId:"AcTr-{}"}}'.format(eachRequest[1], eachRequest[2],
-                                                                           eachRequest[0]))
+                        '{{func:"{}",id:"{}",requestId:"{}{}"}}'.format(eachRequest[1], eachRequest[2],
+                                                                        Global.AcFunAPIWsRequestIdPrefix,
+                                                                        eachRequest[0]))
+                    time.sleep(0.1) # TODO Delete it when necessary.
                 except Exception as e:
                     self.logger.add(
                         "Error occurs while sending request {}: func={}, id={}".format(eachRequest[0], eachRequest[1],
@@ -189,18 +210,19 @@ class AcWsSender(threading.Thread):
                             'request_date="{}", request_time={}, expire_time={}, '
                             'retry_num=0, max_retry_num={}, requested=1 '
                             'WHERE request_id={}'.format(
-                                d.isoformat(), gadget.datetime_to_timestamp(d),
+                                self.escape_string(d.isoformat()), gadget.datetime_to_timestamp(d),
                                 gadget.datetime_to_timestamp(d + datetime.timedelta(seconds=Global.AcFunAPIWsTimeout)),
-                                Global.AcFunAPIWsRetryNum), eachRequest[0])
+                                Global.AcFunAPIWsRetryNum, eachRequest[0]))
                     else: # Retry request.
                         self.cursor.execute(
                             'UPDATE trend_acws_queue SET '
                             'request_date="{}", request_time={}, expire_time={}, '
                             'retry_num=retry_num+1 '
                             'WHERE request_id={}'.format(
-                                d.isoformat(), gadget.datetime_to_timestamp(d),
+                                self.escape_string(d.isoformat()), gadget.datetime_to_timestamp(d),
                                 gadget.datetime_to_timestamp(d + datetime.timedelta(seconds=Global.AcFunAPIWsTimeout)),
-                                Global.AcFunAPIWsRetryNum), eachRequest[0])
+                                Global.AcFunAPIWsRetryNum, eachRequest[0]))
+                    self.conn.commit()
                 except Exception as e:
                     self.logger.add("Error occurs during updating the AcWs Queue.", "SEVERE", ex=e)
                     raise e
@@ -215,20 +237,24 @@ class AcWsReceiver(threading.Thread):
 
     def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsReceiver")
-        self.logger = Logger(name)
+        self.logger = Logger("AcWsReceiver")
         self.count = 0
         self.ws = ws
         try:
-            self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
-                                                                                  Global.mysqlAcWsConnectorDB,
-                                                                                  Global.mysqlUser))
+            self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
+                                                                                   Global.mysqlAcWsConnectorDB,
+                                                                                   Global.mysqlUser), "DEBUG")
             self.conn = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
+            self.conn.set_charset("utf8")
             self.cursor = self.conn.cursor()
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
             raise e
+
+    def escape_string(self, s):
+        return self.conn.escape_string(s)
 
     def run(self):
         while True:
@@ -237,35 +263,40 @@ class AcWsReceiver(threading.Thread):
                 self.logger.add("Fetching the highest uploader % channel score ...")
                 highestUploaderScore = 0
                 highestChannelScore = 0
+                channelScoreList = {}
                 try:
                     self.cursor.execute("SELECT score_trend FROM ac_users ORDER BY score_trend DESC LIMIT 1")
                     assert self.cursor.rowcount > 0
                     highestUploaderScore = self.cursor.fetchall()[0][0]
                 except Exception as e:
-                    self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
+                    self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE")
                 try:
                     self.cursor.execute("SELECT id, score_trend FROM ac_channels ORDER BY score_trend DESC")
                     assert self.cursor.rowcount > 0
                     fetchResult = self.cursor.fetchall()
                     highestChannelScore = fetchResult[0][1]
-                    channelScoreList = {}
                     for eachChannel in fetchResult:
                         channelScoreList[eachChannel[0]] = eachChannel[1]
                 except Exception as e:
-                    self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE", ex=e)
+                    self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE")
                 self.logger.add(
-                    "Highest score: uploader = {}, channel = {}".format(highestUploaderScore, highestChannelScore))
+                    "Highest score: uploader = {}, channel = {}".format(highestUploaderScore, highestChannelScore),
+                    "DEBUG")
 
             try:
+                # Initialization
+                result = None
+                requestId = None
+
                 # Receives information from the AcFun WebSocket API.
                 result = json.loads(self.ws.recv())
-                requestID = result["requestID"]
+                requestId = result["requestId"][len(Global.AcFunAPIWsRequestIdPrefix):]
 
                 # Gets the request information from AcWs Queue.
-                self.cursor.execute("SELECT func, id FROM trend_acws_queue WHERE request_id={}".format(requestID))
+                self.cursor.execute("SELECT func, id FROM trend_acws_queue WHERE request_id={}".format(requestId))
                 rFunc, rId = self.cursor.fetchall()[0]
 
-                self.logger.add("Received requestID={}, func={}, id={}".format(requestID, rFunc, rId))
+                self.logger.add("Received requestId={}, func={}, id={}".format(requestId, rFunc, rId))
 
                 # Parses the information.
                 if rFunc == Global.AcFunAPIFuncGetArticleFull: # Article.
@@ -285,39 +316,47 @@ class AcWsReceiver(threading.Thread):
                             "The database has ac{}: {}. Survive: {}".format(rId, articleHasRecord, isSurvive))
                     else:
                         isSurvive = False
-                        self.logger.add("This is a new article: ac{}".format(rId))
-
-                    # Checks whether the uploader has record in database.
-                    self.cursor.execute(
-                        'SELECT score_trend, rank FROM ac_users WHERE id={}'.format(result["userId"]))
-                    if self.cursor.rowcount > 0:
-                        userHasRecord = True
-                        fetchResult = self.cursor.fetchall()[0]
-                        userScore = fetchResult[0]
-                        userRank = fetchResult[1]
-                    else:
-                        userHasRecord = False
-                        userScore = 0
-                        userRank = 0
-                    self.logger.add(
-                        "User {} has record = {}, score = {}, rank = {}".format(result["userId"], userHasRecord,
-                                                                                userScore, userRank))
-
-                    # Checks whether the channel has record in database.
-                    self.cursor.execute('SELECT id FROM ac_channels WHERE id={}'.format(result["channelId"]))
-                    channelHasRecord = self.cursor.rowcount > 0
-                    if not channelHasRecord:
-                        self.logger.add(
-                            "New channel: id={}, name={}".format(result["channelId"], result["channelName"]))
+                        self.logger.add("This article ac{} does not have record yet.".format(rId))
 
                     if result["statusCode"] == 200: # Article exists.
+                        self.logger.add("Received survived ac{}.".format(rId), "DEBUG")
+
                         result = result["result"]
-                        if result["id"] != rId:
-                            raise Exception("Request ID and rID mismatch.")
+                        if result["id"] != int(rId):
+                            raise Exception("Request ID {} and rID {} mismatch.".format(result["id"], rId))
+
+                        # Checks whether the uploader has record in database.
+                        self.cursor.execute(
+                            'SELECT score_trend, rank FROM ac_users WHERE id={}'.format(result["userId"]))
+                        if self.cursor.rowcount > 0:
+                            userHasRecord = True
+                            fetchResult = self.cursor.fetchall()[0]
+                            userScore = fetchResult[0]
+                            userRank = fetchResult[1]
+                            if not userRank:
+                                userRank = 0
+                        else:
+                            userHasRecord = False
+                            userScore = 0
+                            userRank = 0
+                        self.logger.add(
+                            "User {} has record = {}, score = {}, rank = {}".format(result["userId"], userHasRecord,
+                                                                                    userScore, userRank))
+
+                        # Checks whether the channel has record in database.
+                        self.cursor.execute('SELECT id FROM ac_channels WHERE id={}'.format(result["channelId"]))
+                        channelHasRecord = self.cursor.rowcount > 0
+                        if not channelHasRecord:
+                            self.logger.add(
+                                "New channel: id={}, name={}".format(result["channelId"], result["channelName"]),
+                                "DEBUG")
 
                         # ac_articles
                         self.logger.add("Adding ac{} into ac_articles ...".format(rId))
                         sortTimeModified = False
+
+                        if "description" not in result:
+                            result["description"] = ""
 
                         if "contentImg" not in result:
                             result["contentImg"] = result["img"]
@@ -345,11 +384,13 @@ class AcWsReceiver(threading.Thread):
                             isOriginal = False
 
                         # Calculates score_trend of the article.
+                        currentChannelScore = 0
+                        if result["channelId"] in channelScoreList:
+                            currentChannelScore = channelScoreList[result["channelId"]]
                         articleScore = gadget.calc_score(result["views"], result["comments"], result["stows"],
                                                          resultParts, isOriginal, userScore, highestUploaderScore,
-                                                         channelScoreList[result["channelId"]], highestChannelScore,
-                                                         userRank)
-                        self.logger.add("The score of the article is {}".format(articleScore))
+                                                         currentChannelScore, highestChannelScore, userRank)
+                        self.logger.add("The score of the article is {}".format(articleScore), "DEBUG")
 
                         if articleHasRecord:
                             self.logger.add("Updating ac{}@ac_articles ...".format(rId))
@@ -369,48 +410,57 @@ class AcWsReceiver(threading.Thread):
                                                 'hits={}, week_views={}, month_views={}, day_views={}, '
                                                 'comments={}, stows={}, parts={}, score={}, score_trend={}, '
                                                 'channel_name="{}", channel_id={}, survive=1, '
-                                                'tags={} '
-                                                'WHERE id={}'.format(result["typeId"], result["title"],
-                                                                     result["description"], result["userId"],
-                                                                     result["userName"], result["sortTime"],
+                                                'tags="{}" '
+                                                'WHERE id={}'.format(result["typeId"],
+                                                                     self.escape_string(result["title"]),
+                                                                     self.escape_string(result["description"]),
+                                                                     result["userId"],
+                                                                     self.escape_string(result["userName"]),
+                                                                     result["sortTime"],
                                                                      sortTimeCount, result["lastFeedbackTime"],
-                                                                     result["img"], result["contentImg"],
+                                                                     self.escape_string(result["img"]),
+                                                                     self.escape_string(result["contentImg"]),
                                                                      result["views"], result["weekViews"],
                                                                      result["monthViews"], result["dayViews"],
                                                                      result["comments"], result["stows"], resultParts,
                                                                      result["score"], articleScore,
-                                                                     result["channelName"], result["channelId"],
-                                                                     tagList, rId))
+                                                                     self.escape_string(result["channelName"]),
+                                                                     result["channelId"],
+                                                                     self.escape_string(json.dumps(tagList, rId))))
                         else:
                             self.logger.add("Inserting ac{}@ac_articles ...".format(rId))
 
-                            contDatetime = datetime.datetime.utcfromtimestamp(result["contributeTime"])
+                            contDatetime = gadget.timestamp_to_datetime(result["contributeTime"])
                             contAcDay = gadget.date_to_ac_days(contDatetime)
                             contWeek = gadget.date_to_ac_weeks(contDatetime)
 
                             self.cursor.execute('INSERT INTO ac_articles ('
                                                 'id, type_id, title, description, user_id, user_name,'
                                                 'contribute_time, contribute_time_day, contribute_time_ac_day, '
-                                                'contribute_time_week, contribute_time_month, contribute_time_year,  '
+                                                'contribute_time_week, contribute_time_month, contribute_time_year, '
                                                 'sort_time, last_feedback_time, img, content_img, '
                                                 'hits, week_views, month_views, day_views, comments, stows, parts, '
                                                 'score, score_trend, channel_name, channel_id, tags'
                                                 ') VALUES ('
                                                 '{}, {}, "{}", "{}", {}, "{}", '
                                                 '{}, {}, {}, {}, {}, {}, '
-                                                '{}, {}, {}, "{}", "{}", '
-                                                '{}, {}, {}, {}, {}, {}, {}'
+                                                '{}, {}, "{}", "{}", '
+                                                '{}, {}, {}, {}, {}, {}, {}, '
                                                 '{}, {}, "{}", {}, "{}"'
-                                                ')'.format(rId, result["typeId"], result["title"],
-                                                           result["description"], result["userId"], result["userName"],
+                                                ')'.format(rId, result["typeId"], self.escape_string(result["title"]),
+                                                           self.escape_string(result["description"]), result["userId"],
+                                                           self.escape_string(result["userName"]),
                                                            result["contributeTime"], contDatetime.day, contAcDay,
                                                            contWeek, contDatetime.month, contDatetime.year,
                                                            result["sortTime"], result["lastFeedbackTime"],
-                                                           result["img"], result["contentImg"], result["views"],
+                                                           self.escape_string(result["img"]),
+                                                           self.escape_string(result["contentImg"]), result["views"],
                                                            result["weekViews"], result["monthViews"],
                                                            result["dayViews"], result["comments"], result["stows"],
                                                            resultParts, result["score"], articleScore,
-                                                           result["channelName"], result["channelId"], tagList))
+                                                           self.escape_string(result["channelName"]),
+                                                           result["channelId"],
+                                                           self.escape_string(json.dumps(tagList))))
                         # ac_users
                         ## Removes old data.
                         if articleHasRecord:
@@ -439,10 +489,11 @@ class AcWsReceiver(threading.Thread):
                             self.cursor.execute('INSERT INTO ac_users ('
                                                 'id, name, hits, comments, stows, parts, '
                                                 'score, score_trend, contains, contains_{}'
-                                                ') VALUES {'
+                                                ') VALUES ('
                                                 '{}, "{}", {}, {}, {}, {}, '
                                                 '{}, {}, 1, 1'
-                                                '}'.format(result["typeId"], result["userId"], result["userName"],
+                                                ')'.format(result["typeId"], result["userId"],
+                                                           self.escape_string(result["userName"]),
                                                            result["views"], result["comments"], result["stows"],
                                                            resultParts, result["score"], articleScore))
 
@@ -473,10 +524,11 @@ class AcWsReceiver(threading.Thread):
                             self.cursor.execute('INSERT INTO ac_channels ('
                                                 'id, name, hits, comments, stows, parts, '
                                                 'score, score_trend, contains'
-                                                ') VALUES {'
+                                                ') VALUES ('
                                                 '{}, "{}", {}, {}, {}, {}, '
                                                 '{}, {}, 1'
-                                                '}'.format(result["channelId"], result["channelName"],
+                                                ')'.format(result["channelId"],
+                                                           self.escape_string(result["channelName"]),
                                                            result["views"], result["comments"], result["stows"],
                                                            resultParts, result["score"], articleScore))
 
@@ -511,10 +563,10 @@ class AcWsReceiver(threading.Thread):
                                 self.cursor.execute('INSERT INTO ac_tags ('
                                                     'id, name, hits, comments, stows, parts, '
                                                     'score, score_trend, contains, manager_id'
-                                                    ') VALUES {'
+                                                    ') VALUES ('
                                                     '{}, "{}", {}, {}, {}, {}, '
                                                     '{}, {}, 1, {}'
-                                                    '}'.format(eachTag["tagId"], result["channelName"],
+                                                    ')'.format(eachTag["tagId"], self.escape_string(eachTag["tagName"]),
                                                                result["views"], result["comments"], result["stows"],
                                                                resultParts, result["score"], articleScore,
                                                                eachTag["managerId"]))
@@ -552,13 +604,14 @@ class AcWsReceiver(threading.Thread):
                                                 ') VALUES ('
                                                 '{}, "{}", "{}", "{}", "{}", "{}"'
                                                 ')'.format(rId, [acDay], [result["views"]], [result["comments"]],
-                                                           [result["stows"]], {acDay: 1}))
+                                                           [result["stows"]],
+                                                           self.escape_string(json.dumps({acDay: 1}))))
                         self.conn.commit()
                     elif result["statusCode"] == 402: # Article does not exist.
                         self.logger.add("Article does not exist: ac{}".format(rId))
                         if articleHasRecord and isSurvive:
                             # Changes survive in ac_articles.
-                            self.logger.add("Changing survive mode of ac{} to 0 ...".format(rId))
+                            self.logger.add("Changing survive mode of ac{} to 0 ...".format(rId), "DEBUG")
                             self.cursor.execute("UPDATE ac_articles SET survive=0 WHERE id={}".format(rId))
                             self.conn.commit()
                     else:
@@ -567,9 +620,11 @@ class AcWsReceiver(threading.Thread):
                                                                                         result["result"]), "SEVERE")
                 elif rFunc == Global.AcFunAPIFuncGetUserFull: # User.
                     if result["statusCode"] == 200:
+                        self.logger.add("Received survived user{}.".format(rId), "DEBUG")
+
                         result = result["result"]
-                        if result["id"] != rId:
-                            raise Exception("Request ID and rID mismatch.")
+                        if result["id"] != int(rId):
+                            raise Exception("Request ID {} and rID {} mismatch.".format(result["id"], rId))
 
                         self.logger.add("Updating user{} into ac_users ...".format(rId))
                         sqlUserInfo = ''
@@ -586,16 +641,16 @@ class AcWsReceiver(threading.Thread):
                         if "sextrend" in result:
                             sqlUserInfo += ', sex_trend={}'.format(result["sextrend"])
                         if "comefrom" in result:
-                            sqlUserInfo += ', come_from="{}"'.format(result["comefrom"])
+                            sqlUserInfo += ', come_from="{}"'.format(self.escape_string(result["comefrom"]))
                         if "img" in result:
-                            sqlUserInfo += ', img="{}"'.format(result["img"])
+                            sqlUserInfo += ', img="{}"'.format(self.escape_string(result["img"]))
                         if "lastLoginTime" in result:
                             sqlUserInfo += ', last_login_time={}'.format(result["lastLoginTime"])
                         if "onlineDuration" in result:
                             sqlUserInfo += ', online_duration={}'.format(result["onlineDuration"])
                         self.cursor.execute('UPDATE ac_users SET '
                                             'name="{}"{}'
-                                            'WHERE id={}'.format(result["name"], sqlUserInfo, rId))
+                                            'WHERE id={}'.format(self.escape_string(result["name"]), sqlUserInfo, rId))
                         self.conn.commit()
                     elif result["statusCode"] == 402:
                         raise Exception("Failed to get user info. Result={}".format(result["result"]))
@@ -605,11 +660,16 @@ class AcWsReceiver(threading.Thread):
                                                                                           result["result"]), "SEVERE")
                 else: # Unrecognized.
                     self.logger.add("Unrecognized func: {}.".format(rFunc), "SEVERE")
+                # Remove request from AcWs Queue.
+                self.logger.add("Removing request {} from AcWs Queue ...".format(requestId))
+                try:
+                    self.cursor.execute("DELETE FROM trend_acws_queue WHERE request_id={}".format(requestId))
+                    self.conn.commit()
+                except Exception as e:
+                    self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE", ex=e)
             except Exception as e:
-                self.logger.add("Received invalid data. Skipped.", "WARNING", ex=e)
-
+                self.logger.add("Received invalid data. Result={}. Skipped.".format(result), "WARNING", ex=e)
             self.count += 1
-            time.sleep(Global.AcFunAPIWsCycleGap)
 
 
 if __name__ == "__main__":

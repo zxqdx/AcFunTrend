@@ -130,6 +130,7 @@ def timestamp_to_datetime(ts, tz=8):
         d = datetime.datetime.utcfromtimestamp(ts / 1000)
     return d + datetime.timedelta(hours=tz)
 
+
 def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, logger=None):
     def get_result(resultWrapper):
         resultWrapper[0] = pool.request('GET', url)
@@ -169,19 +170,30 @@ def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestU
                highestChannelScore, uploaderRank):
     import math
 
+    # print(hits, comments, stows, parts, isOriginal, uploaderScore, highestUploaderScore, channelScore,
+    #       highestChannelScore, uploaderRank)
+
     GOLDEN_SECTION = (1 + math.sqrt(5)) / 2
 
-    hit_score = hits * ((1 / e) ** math.log(x / 100, 10))
-    comment_score = comments * 20 / (
-        (comments * (1 / e ^ (math.log(comments, 10)))) / (math.e / (GOLDEN_SECTION - 1) + 1))
-    if stows <= 50000:
-        stow_score = stows * ((GOLDEN_SECTION - 1) + x / 100000) ** (1 - math.log(stows, 10) / GOLDEN_SECTION)
+    if hits > 0:
+        hit_score = hits * ((1 / math.e) ** math.log(hits / 100, 10))
+    else:
+        hit_score = 0
+    if comments > 0:
+        comment_score = comments * 20 / (
+            (comments * (1 / math.e ** (math.log(comments, 10)))) / (math.e / (GOLDEN_SECTION - 1) + 1))
+    else:
+        comment_score = 0
+    if stows <= 0:
+        stow_score = 0
+    elif stows <= 50000:
+        stow_score = stows * ((GOLDEN_SECTION - 1) + stows / 100000) ** (1 - math.log(stows, 10) / GOLDEN_SECTION)
     else:
         stow_score = 40432
     if parts == 0:
         part_score = 0
     else:
-        part_score = 100 / (8 ** math.log(parts, 10)) * x ** 1.5
+        part_score = 100 / (8 ** math.log(parts, 10)) * parts ** 1.5
     score_trend = hit_score + comment_score + stow_score + part_score
 
     # Original.
@@ -232,7 +244,13 @@ def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestU
     if uploaderRank != 0:
         score_trend *= (1 + (uploaderRank - 1) / 10000)
 
-    return score_trend
+    return int(score_trend)
+
+def clear_screen():
+    if is_panguine():
+        os.system("clear")
+    else:
+        os.system("cls")
 
 
 if __name__ == '__main__':
@@ -241,4 +259,7 @@ if __name__ == '__main__':
     # print(date_to_ac_days(datetime.datetime.now()))
     # print(date_to_ac_weeks())
     # print(date_to_ac_weeks(datetime.datetime(2007, 6, 11)))
+    print(calc_score(10000, 20, 30, 1, True, 0, 0, 0, 0, 2))
+    clear_screen()
+    print("123")
     pass

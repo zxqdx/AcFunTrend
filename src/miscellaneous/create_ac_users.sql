@@ -34,10 +34,10 @@ CREATE TABLE `ac_users` (
   `score` bigint(20) NOT NULL,
   `score_trend` bigint(20) NOT NULL,
   `contains` int(11) NOT NULL,
-  `contains_1` int(11) NOT NULL,
-  `contains_2` int(11) NOT NULL,
-  `contains_3` int(11) NOT NULL,
-  `contains_4` int(11) NOT NULL,
+  `contains_1` int(11) NOT NULL DEFAULT '0',
+  `contains_2` int(11) NOT NULL DEFAULT '0',
+  `contains_3` int(11) NOT NULL DEFAULT '0',
+  `contains_4` int(11) NOT NULL DEFAULT '0',
   `register_time` bigint(20) DEFAULT NULL,
   `rank` int(11) DEFAULT NULL,
   `gender` int(11) DEFAULT NULL,
@@ -72,4 +72,4 @@ CREATE TABLE `ac_users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2013-12-27 20:08:52
+-- Dump completed on 2013-12-28 21:16:53

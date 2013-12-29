@@ -19,7 +19,7 @@ import Global
 
 
 def main(mode):
-    logger.add("Running on mode {}.".format(mode))
+    logger.add("Running on mode {}.".format(mode), "DEBUG")
     # Connects to the ACWS Queue.
     conn, cursor = connect_to_queue()
     # Quits if the previous requests have not been finished yet.
@@ -30,7 +30,7 @@ def main(mode):
         raise SystemExit
     if mode == 1:
         # Gets the newest article ID (AID) using HTTP request.
-        logger.add("Fetching the newest AID ...")
+        logger.add("Fetching the newest AID ...", "DEBUG")
         newestAID = None
         for x in range(10):
             resultJson = gadget.get_page(Global.AcFunAPIHost,
@@ -48,7 +48,7 @@ def main(mode):
             logger.add("Failed to get the newest AID. This cron job is forced to quit.", "SEVERE")
             raise SystemExit
         else:
-            logger.add("The newest AID is {}".format(newestAID))
+            logger.add("The newest AID is {}".format(newestAID), "DEBUG")
         # Creates the job that adds and refreshes articles today.
         acDayToday = gadget.date_to_ac_days()
         ## Fetches the latest AID of articles before today.
@@ -60,31 +60,31 @@ def main(mode):
         else:
             ## If failed, set the earliest AID equals 1.
             earliestAID = 1
-        logger.add("The earliest AID is {}".format(earliestAID))
+        logger.add("The earliest AID is {}".format(earliestAID), "DEBUG")
         ## Pushes requests into the ACWS Queue.
         for AID in range(earliestAID + 1, newestAID + 1):
             if AID % 200 == 0:
-                logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID))
+                logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID), "DEBUG")
             cursor.execute(
                 'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
                 'VALUES ("{}", "{}", {}, {})'.format(
                     Global.AcFunAPIFuncGetArticleFull, AID, 5, 1))
         conn.commit()
-        logger.add("Requests pushed successfully.")
+        logger.add("Requests pushed successfully.", "DEBUG")
     elif mode == 2:
         pass
     elif mode == 3:
         pass
-    logger.add("Finish mode {}.".format(mode))
-
+    logger.add("Finish mode {}.".format(mode), "DEBUG")
 
 def connect_to_queue():
     try:
         logger.add("Connecting to MYSQL {}:{}. DB={}. User={}...".format(Global.mysqlHost, Global.mysqlPort,
                                                                          Global.mysqlAcWsConnectorDB,
-                                                                         Global.mysqlUser))
+                                                                         Global.mysqlUser), "DEBUG")
         connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                    passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
+        connAcWs.set_charset('utf8')
         cursorAcWs = connAcWs.cursor()
     except Exception as e:
         logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(

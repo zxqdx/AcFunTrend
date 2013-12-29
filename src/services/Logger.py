@@ -29,7 +29,7 @@ class Logger(object):
         self.err = False
         self._open(module)
 
-    def add(self, message, level="INFO", ex=None):
+    def add(self, message, level="DETAIL", ex=None):
         """
         @Param level: Can only be three cases.
                       -- SEVERE: Record into the normal log file and the error log file.
@@ -42,7 +42,7 @@ class Logger(object):
         if level == "SEVERE":
             gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
         gadget.write_file(self.filename, "[{}] <{}> {}".format(self._time(), level, message), None)
-        if Global.isDebug:
+        if Global.isDebug and level!="DETAIL":
             print("[{}] <{}> ({}) {}".format(self._time(), level, self.module, message))
 
     @staticmethod
