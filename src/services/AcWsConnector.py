@@ -169,7 +169,8 @@ class AcWsSender(threading.Thread):
                         self.cursor.execute(
                             'DELETE FROM trend_acws_queue WHERE request_id={}'.format(eachTimedOutRequest[0]))
                         self.logger.add(
-                            "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]))
+                            "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]),
+                            "DEBUG")
                         self.conn.commit()
             except Exception as e:
                 self.logger.add("Error occurs during processing the AcWs Queue.", "SEVERE", ex=e)
@@ -180,12 +181,12 @@ class AcWsSender(threading.Thread):
             for x in range(requestListLength):
                 eachRequest = requestList[x]
                 # Sends the request.
-                if x % 50 == 0:
+                if (x + 1) % 50 == 0:
                     debugLevel = "DEBUG"
                 else:
                     debugLevel = "DETAIL"
                 self.logger.add(
-                    "{}/{} Sending request {}: func={}, id={}, requested={} ...".format(x, requestListLength,
+                    "{}/{} Sending request {}: func={}, id={}, requested={} ...".format((x + 1), requestListLength,
                                                                                         eachRequest[0], eachRequest[1],
                                                                                         eachRequest[2], eachRequest[3]),
                     debugLevel)
@@ -390,12 +391,14 @@ class AcWsReceiver(threading.Thread):
                         articleScore = gadget.calc_score(result["views"], result["comments"], result["stows"],
                                                          resultParts, isOriginal, userScore, highestUploaderScore,
                                                          currentChannelScore, highestChannelScore, userRank)
-                        self.logger.add("The score of the article is {}".format(articleScore), "DEBUG")
+                        self.logger.add("The score of the article is {}".format(articleScore))
 
                         if articleHasRecord:
                             self.logger.add("Updating ac{}@ac_articles ...".format(rId))
-                            previousSortTime = self.cursor.execute('SELECT sortTime FROM ac_articles '
-                                                                   'WHERE id={}'.format(rId))
+                            self.cursor.execute('SELECT sort_time FROM ac_articles '
+                                                'WHERE id={}'.format(rId))
+
+                            previousSortTime = self.cursor.fetchall()[0][0]
                             sortTimeCount = ", "
                             if previousSortTime != result["sortTime"]:
                                 sortTimeCount += "sort_time_count=sort_time_count+1, "
@@ -426,7 +429,7 @@ class AcWsReceiver(threading.Thread):
                                                                      result["score"], articleScore,
                                                                      self.escape_string(result["channelName"]),
                                                                      result["channelId"],
-                                                                     self.escape_string(json.dumps(tagList, rId))))
+                                                                     self.escape_string(json.dumps(tagList)), rId))
                         else:
                             self.logger.add("Inserting ac{}@ac_articles ...".format(rId))
 
@@ -575,7 +578,7 @@ class AcWsReceiver(threading.Thread):
                         acDay = gadget.date_to_ac_days(gadget.timestamp_to_datetime(result["sortTime"]))
                         if articleHasRecord:
                             self.logger.add("Updating ac{} into ac_delta ...".format(rId))
-                            self.cursor.execute('SELECT days, hits, comments, stows, sorts'
+                            self.cursor.execute('SELECT days, hits, comments, stows, sorts '
                                                 'FROM ac_delta WHERE id={}'.format(rId))
                             if self.cursor.rowcount > 0:
                                 deltaHasRecord = True
@@ -668,7 +671,7 @@ class AcWsReceiver(threading.Thread):
                 except Exception as e:
                     self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE", ex=e)
             except Exception as e:
-                self.logger.add("Received invalid data. Result={}. Skipped.".format(result), "WARNING", ex=e)
+                self.logger.add("Received invalid data. Result={}. Skipped.".format(result), "SEVERE", ex=e)
             self.count += 1
 
 
