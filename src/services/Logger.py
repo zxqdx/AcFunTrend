@@ -24,6 +24,8 @@ class Logger(object):
         """
         Constructor
         """
+        self.previousTime = ""
+        self.indent = "  "
         self.module = None
         self.filename = None
         self.filenameDebug = None
@@ -38,18 +40,22 @@ class Logger(object):
                       -- INFO: Record into the normal log file.
         @Param ex: Exception. If it is not None, append the exception after the message.
         """
+        currentTime = self._time()
+        toConsole = Global.isDebug and level!="DETAIL"
+        if self.previousTime!=currentTime:
+            gadget.write_file(self.filename, "[{}]".format(currentTime), None, toConsole=Global.isDebug)
+            self.previousTime = currentTime
         if ex:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            message += "\nException: " + str(ex)
-            message += "\nTraceback: \n"
+            message += "\n{}Exception: ".format(self.indent) + str(ex)
+            message += "\n{}Traceback: \n".format(self.indent)
             extractTB = traceback.extract_tb(exc_traceback)
             for x in range(len(extractTB)):
-                message += repr(extractTB[x]).strip("(").strip(")").strip("'") + "\n"
+                message += self.indent + repr(extractTB[x]).strip("(").strip(")").strip("'") + "\n"
         if level == "SEVERE":
-            gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
-        gadget.write_file(self.filename, "[{}] <{}> {}".format(self._time(), level, message), None)
-        if Global.isDebug and level!="DETAIL":
-            print("[{}] <{}> ({}) {}".format(self._time(), level, self.module, message))
+            gadget.write_file(self.filenameDebug, "[{}]".format(currentTime), None)
+            gadget.write_file(self.filenameDebug, self.indent + message, None)
+        gadget.write_file(self.filename, "{}<{}> {}".format(self.indent, level, message), None, toConsole=toConsole)
 
     @staticmethod
     def _time():

@@ -25,7 +25,7 @@ def is_file(filePath):
     return os.path.isfile(filePath)
 
 
-def write_file(filename, content, form="json", append=True, end=True):
+def write_file(filename, content, form="json", append=True, end=True, toConsole=False):
     try:
         folderName = os.path.dirname(filename)
         try:
@@ -38,14 +38,20 @@ def write_file(filename, content, form="json", append=True, end=True):
             file = open(filename, "w")
         if not form:
             file.write(content)
+            if toConsole:
+                print(content, end="")
         elif form == "json":
             file.write(json.dumps(content))
+            if toConsole:
+                print(json.dumps(content), end="")
         if end:
             if is_panguine():
                 end_str = "\r"
             else:
                 end_str = "\n"
             file.write(end_str)
+            if toConsole:
+                print(end_str, end="")
         file.close()
     except Exception as e:
         raise e
