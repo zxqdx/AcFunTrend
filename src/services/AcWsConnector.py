@@ -172,7 +172,8 @@ class AcWsSender(threading.Thread):
                                     'FROM trend_acws_queue '
                                     'WHERE requested=1 and expire_time<{}'.format(gadget.datetime_to_timestamp()))
                 timedOutRequestList = self.cursor.fetchall()
-                self.logger.add("Fetched {} timed out requests.".format(len(timedOutRequestList)), "DEBUG")
+                if len(timedOutRequestList) != 0:
+                    self.logger.add("Fetched {} timed out requests.".format(len(timedOutRequestList)), "DEBUG")
 
                 # Retries the request if retryNum <= maxRetryNum. Abandons if retryNum > maxRetryNum.
                 for eachTimedOutRequest in timedOutRequestList:
@@ -210,14 +211,14 @@ class AcWsSender(threading.Thread):
                         '{{func:"{}",id:"{}",requestId:"{}{}"}}'.format(eachRequest[1], eachRequest[2],
                                                                         Global.AcFunAPIWsRequestIdPrefix,
                                                                         eachRequest[0]))
-                    self.ws_alive = [False]
-                    while not self.ws_alive[0]:
-                        time.sleep(1)
-                        # time.sleep(0.1) # TODO Delete it when necessary.
                 except Exception as e:
                     self.logger.add(
                         "Error occurs while sending request {}: func={}, id={}".format(eachRequest[0], eachRequest[1],
                                                                                        eachRequest[2]), "SEVERE", ex=e)
+                    self.ws_alive = [False]
+                    while not self.ws_alive[0]:
+                        time.sleep(1)
+                        # time.sleep(0.1) # TODO Delete it when necessary.
 
                     # raise e
                 # Updates AcWs Queue.
