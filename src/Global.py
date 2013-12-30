@@ -16,8 +16,10 @@ wwwPath = gadget.replace_all(wwwPath, "\\", "/")
 #            AcFun Trend services will quit!!
 globalSwitchPath = "{}/GlobalSwitch.trr".format(wwwPath)
 
-AcFunAPIHost = "59.175.227.54"
-AcFunAPIPort = 88
+# AcFunAPIHost = "59.175.227.54"
+# AcFunAPIPort = 88
+AcFunAPIHost = "103.244.232.84"
+AcFunAPIPort = 8085
 AcFunAPIHttpUrl = "http://{}:{}/http/json/exec?".format(AcFunAPIHost, AcFunAPIPort)
 AcFunAPIWsUrl = "ws://{}:{}/ws".format(AcFunAPIHost, AcFunAPIPort)
 AcFunAPIWsKey = "3fe3f2b10bbad0a1"
@@ -25,7 +27,7 @@ AcFunAPIWsSecret = "e0c64e4b2c6eba73a1bb2b5ba2a854bbc1fa592f"
 AcFunAPIWsRequestIdPrefix = "AcTr-"
 AcFunAPIWsTimeout = 20
 AcFunAPIWsRetryNum = 3
-AcFunAPIWsCycleGap = 2
+AcFunAPIWsCycleGap = 1
 AcFunAPIFuncGetArticle = "content.get"
 AcFunAPIFuncGetArticleFull = "fullcontent.get"
 AcFunAPIFuncGetUserFull = "fulluser.get"

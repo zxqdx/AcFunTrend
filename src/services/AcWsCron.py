@@ -68,7 +68,7 @@ def main(mode):
             cursor.execute(
                 'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
                 'VALUES ("{}", "{}", {}, {})'.format(
-                    Global.AcFunAPIFuncGetArticleFull, AID, 5, 1))
+                    Global.AcFunAPIFuncGetArticleFull, AID, Global.AcFunAPIWsRetryNum, 1))
         conn.commit()
         logger.add("Requests pushed successfully.", "DEBUG")
     elif mode == 2:

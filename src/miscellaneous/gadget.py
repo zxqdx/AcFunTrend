@@ -57,7 +57,7 @@ def read_file(filename, form="json"):
         file = open(filename, "r")
         content = file.read().strip()
         if form == "json":
-            content = json.loads(content)
+            content = json.loads(content, strict=False)
         file.close()
         return content
     except Exception as e:
@@ -158,7 +158,7 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
     elif form == "json":
         resultJson = None
         try:
-            resultJson = json.loads(resultWrapper[1])
+            resultJson = json.loads(resultWrapper[1], strict=False)
         except Exception as e:
             raise_exception(str(e))
         return resultJson

@@ -10,6 +10,8 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from websocket import create_connection
+
 from ServiceLocker import ServiceLocker
 from Logger import Logger
 import Global
@@ -40,18 +42,32 @@ class AcWsConnector(threading.Thread):
                             "SEVERE", ex=e)
             raise e
 
+        self.ws = None
+        self.get_ws()
+        self.ws_alive = [True]
+
+        # Sets up threads.
+        self.logger.add("Setting up threads.", "DEBUG")
+        self.acWsSender = AcWsSender(self.ws, self.ws_alive)
+        self.acWsReceiver = AcWsReceiver(self.ws, self.ws_alive)
+        self.acWsSender.daemon = True
+        self.acWsReceiver.daemon = True
+
+    def get_ws(self):
         # Connects to AcFun WebSocket.
         self.logger.add("Connecting to AcFun WebSocket...", "DEBUG")
-        from websocket import create_connection
-
-        try:
-            self.ws = create_connection(Global.AcFunAPIWsUrl)
-        except Exception as e:
-            self.logger.add("Failed to connect to AcFun WebSocket.", "SEVERE", ex=e)
+        isConnected = False
+        while not isConnected:
+            try:
+                self.ws = create_connection(Global.AcFunAPIWsUrl)
+                isConnected = True
+            except Exception as e:
+                self.logger.add("Failed to connect to AcFun WebSocket.", "WARNING", ex=e)
+                time.sleep(20)
         self.logger.add("Authenticating...", "DEBUG")
         self.ws.send('{{func:"auth","key":"{}","secret":"{}"}}'.format(Global.AcFunAPIWsKey, Global.AcFunAPIWsSecret))
         try:
-            result = json.loads(self.ws.recv())
+            result = json.loads(self.ws.recv(), strict=False)
             isSuccess = False
             if "success" in result:
                 isSuccess = result["success"]
@@ -67,13 +83,6 @@ class AcWsConnector(threading.Thread):
             self.close()
             self.logger.close()
             raise SystemExit
-
-        # Sets up threads.
-        self.logger.add("Setting up threads.", "DEBUG")
-        self.acWsSender = AcWsSender(self.ws)
-        self.acWsReceiver = AcWsReceiver(self.ws)
-        self.acWsSender.daemon = True
-        self.acWsReceiver.daemon = True
 
     def run(self):
         # Starts threads.
@@ -97,6 +106,10 @@ class AcWsConnector(threading.Thread):
                 self.logger.add("An error occurs in thread {}. The service is about to quit.".format("AcWsSender"),
                                 "SEVERE")
                 break
+
+            if not self.ws_alive[0]:
+                self.get_ws()
+                self.ws_alive = [True]
             time.sleep(1)
 
         # Close when interruption or exception occurs.
@@ -117,10 +130,11 @@ class AcWsSender(threading.Thread):
     The sender that is responsible for sending requests.
     """
 
-    def __init__(self, ws):
+    def __init__(self, ws, ws_alive):
         threading.Thread.__init__(self, name="AcWsSender")
         self.logger = Logger("AcWsSender")
         self.ws = ws
+        self.ws_alive = ws_alive
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                    Global.mysqlAcWsConnectorDB,
@@ -149,7 +163,7 @@ class AcWsSender(threading.Thread):
                     'SELECT request_id, func, id, requested FROM trend_acws_queue '
                     'WHERE requested=0 ORDER BY priority LIMIT 100')
                 newRequestList = self.cursor.fetchall()
-                self.logger.add("Fetched {} requests.".format(len(newRequestList)), "DEBUG")
+                self.logger.add("Fetched {} new requests.".format(len(newRequestList)), "DEBUG")
                 requestList.extend(newRequestList)
 
                 # Gets all the timed out requests.
@@ -158,6 +172,7 @@ class AcWsSender(threading.Thread):
                                     'FROM trend_acws_queue '
                                     'WHERE requested=1 and expire_time<{}'.format(gadget.datetime_to_timestamp()))
                 timedOutRequestList = self.cursor.fetchall()
+                self.logger.add("Fetched {} timed out requests.".format(len(timedOutRequestList)), "DEBUG")
 
                 # Retries the request if retryNum <= maxRetryNum. Abandons if retryNum > maxRetryNum.
                 for eachTimedOutRequest in timedOutRequestList:
@@ -195,12 +210,16 @@ class AcWsSender(threading.Thread):
                         '{{func:"{}",id:"{}",requestId:"{}{}"}}'.format(eachRequest[1], eachRequest[2],
                                                                         Global.AcFunAPIWsRequestIdPrefix,
                                                                         eachRequest[0]))
-                    time.sleep(0.1) # TODO Delete it when necessary.
+                    self.ws_alive = [False]
+                    while not self.ws_alive[0]:
+                        time.sleep(1)
+                        # time.sleep(0.1) # TODO Delete it when necessary.
                 except Exception as e:
                     self.logger.add(
                         "Error occurs while sending request {}: func={}, id={}".format(eachRequest[0], eachRequest[1],
                                                                                        eachRequest[2]), "SEVERE", ex=e)
-                    raise e
+
+                    # raise e
                 # Updates AcWs Queue.
                 self.logger.add("Updating AcWs Queue ...")
                 try:
@@ -209,11 +228,11 @@ class AcWsSender(threading.Thread):
                         self.cursor.execute(
                             'UPDATE trend_acws_queue SET '
                             'request_date="{}", request_time={}, expire_time={}, '
-                            'retry_num=0, max_retry_num={}, requested=1 '
+                            'retry_num=0, requested=1 '
                             'WHERE request_id={}'.format(
                                 self.escape_string(d.isoformat()), gadget.datetime_to_timestamp(d),
                                 gadget.datetime_to_timestamp(d + datetime.timedelta(seconds=Global.AcFunAPIWsTimeout)),
-                                Global.AcFunAPIWsRetryNum, eachRequest[0]))
+                                eachRequest[0]))
                     else: # Retry request.
                         self.cursor.execute(
                             'UPDATE trend_acws_queue SET '
@@ -222,7 +241,7 @@ class AcWsSender(threading.Thread):
                             'WHERE request_id={}'.format(
                                 self.escape_string(d.isoformat()), gadget.datetime_to_timestamp(d),
                                 gadget.datetime_to_timestamp(d + datetime.timedelta(seconds=Global.AcFunAPIWsTimeout)),
-                                Global.AcFunAPIWsRetryNum, eachRequest[0]))
+                                eachRequest[0]))
                     self.conn.commit()
                 except Exception as e:
                     self.logger.add("Error occurs during updating the AcWs Queue.", "SEVERE", ex=e)
@@ -236,11 +255,12 @@ class AcWsReceiver(threading.Thread):
     The receiver that is responsible for receiving requests and saving them to database.
     """
 
-    def __init__(self, ws):
+    def __init__(self, ws, ws_alive):
         threading.Thread.__init__(self, name="AcWsReceiver")
         self.logger = Logger("AcWsReceiver")
         self.count = 0
         self.ws = ws
+        self.ws_alive = ws_alive
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                    Global.mysqlAcWsConnectorDB,
@@ -286,15 +306,28 @@ class AcWsReceiver(threading.Thread):
 
             try:
                 # Initialization
+                wsReceived = None
                 result = None
                 requestId = None
 
                 # Receives information from the AcFun WebSocket API.
-                result = json.loads(self.ws.recv())
+                try:
+                    wsReceived = self.ws.recv()
+                except Exception as e:
+                    self.logger.add("Error occurs while receiving request.", "SEVERE", ex=e)
+                    self.ws_alive = [False]
+                    while not self.ws_alive[0]:
+                        time.sleep(1)
+                result = json.loads(wsReceived, strict=False)
                 requestId = result["requestId"][len(Global.AcFunAPIWsRequestIdPrefix):]
 
                 # Gets the request information from AcWs Queue.
                 self.cursor.execute("SELECT func, id FROM trend_acws_queue WHERE request_id={}".format(requestId))
+                if self.cursor.rowcount == 0:
+                    requestRemoved = True
+                    self.logger.add("Request ID={} was removed from AcWs Queue.".format(requestId))
+                else:
+                    requestRemoved = False
                 rFunc, rId = self.cursor.fetchall()[0]
 
                 self.logger.add("Received requestId={}, func={}, id={}".format(requestId, rFunc, rId))
@@ -312,7 +345,7 @@ class AcWsReceiver(threading.Thread):
                         previousHits, previousComments, previousStows, \
                         previousParts, previousScore, previousScoreTrend, \
                         previousUserId, previousChannelId, previousTags, previousTypeId = fetchResult[1:]
-                        previousTags = json.loads(previousTags)
+                        previousTags = json.loads(previousTags, strict=False)
                         self.logger.add(
                             "The database has ac{}: {}. Survive: {}".format(rId, articleHasRecord, isSurvive))
                     else:
@@ -664,14 +697,17 @@ class AcWsReceiver(threading.Thread):
                 else: # Unrecognized.
                     self.logger.add("Unrecognized func: {}.".format(rFunc), "SEVERE")
                 # Remove request from AcWs Queue.
-                self.logger.add("Removing request {} from AcWs Queue ...".format(requestId))
-                try:
-                    self.cursor.execute("DELETE FROM trend_acws_queue WHERE request_id={}".format(requestId))
-                    self.conn.commit()
-                except Exception as e:
-                    self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE", ex=e)
+                if not requestRemoved:
+                    self.logger.add("Removing request {} from AcWs Queue ...".format(requestId))
+                    try:
+                        self.cursor.execute("DELETE FROM trend_acws_queue WHERE request_id={}".format(requestId))
+                        self.conn.commit()
+                    except Exception as e:
+                        self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE",
+                                        ex=e)
             except Exception as e:
-                self.logger.add("Received invalid data. Result={}. Skipped.".format(result), "SEVERE", ex=e)
+                self.logger.add("Received invalid data = {}. Skipped.".format(wsReceived), "SEVERE", ex=e)
+                # raise e
             self.count += 1
 
 

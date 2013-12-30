@@ -8,9 +8,10 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from miscellaneous import gadget
+import traceback
 import datetime
 
+from miscellaneous import gadget
 import Global
 
 
@@ -38,7 +39,12 @@ class Logger(object):
         @Param ex: Exception. If it is not None, append the exception after the message.
         """
         if ex:
-            message += " Exception: " + str(ex)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            message += "\nException: " + str(ex)
+            message += "\nTraceback: \n"
+            extractTB = traceback.extract_tb(exc_traceback)
+            for x in range(len(extractTB)):
+                message += repr(extractTB[x]).strip("(").strip(")").strip("'") + "\n"
         if level == "SEVERE":
             gadget.write_file(self.filenameDebug, "[{}] {}".format(self._time(), message), None)
         gadget.write_file(self.filename, "[{}] <{}> {}".format(self._time(), level, message), None)
