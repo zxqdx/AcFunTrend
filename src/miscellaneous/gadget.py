@@ -252,11 +252,28 @@ def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestU
 
     return int(score_trend)
 
+
 def clear_screen():
     if is_panguine():
         os.system("clear")
     else:
         os.system("cls")
+
+
+def parse_json(s, strict=False):
+    import json
+
+    while True:
+        try:
+            return json.loads(s, strict=strict)
+        except ValueError as e:
+            import re
+            err = str(e)
+            pattern = re.compile(r"\(char (\d*)\)")
+            escapeIndex = int(pattern.findall(err)[0])
+            s = s[:escapeIndex] + s[(escapeIndex + 2):]
+        except Exception as e:
+            raise e
 
 
 if __name__ == '__main__':

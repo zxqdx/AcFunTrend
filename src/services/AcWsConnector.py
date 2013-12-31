@@ -319,7 +319,7 @@ class AcWsReceiver(threading.Thread):
                     self.ws_alive = [False]
                     while not self.ws_alive[0]:
                         time.sleep(1)
-                result = json.loads(wsReceived, strict=False)
+                result = gadget.parse_json(wsReceived, strict=False)
                 requestId = result["requestId"][len(Global.AcFunAPIWsRequestIdPrefix):]
 
                 # Gets the request information from AcWs Queue.
