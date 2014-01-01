@@ -19,7 +19,7 @@ import Global
 
 
 def main(mode):
-    logger.add("Running on mode {}.".format(mode), "DEBUG")
+    logger.add("Running on mode {} ...".format(mode), "DEBUG")
     # Connects to the ACWS Queue.
     conn, cursor = connect_to_queue()
     # Quits if the previous requests have not been finished yet.
@@ -53,10 +53,10 @@ def main(mode):
         acDayToday = gadget.date_to_ac_days()
         ## Fetches the latest AID of articles before today.
         cursor.execute(
-            "SELECT id FROM ac_articles "
-            "WHERE sort_time_ac_day<{} ORDER BY sort_time DESC LIMIT 1".format(acDayToday))
-        if cursor.rowcount > 1:
-            earliestAID = cursor.fetchall()[0][0] # TODO: test it.
+            'SELECT id FROM ac_articles '
+            'WHERE contribute_time_ac_day<{} ORDER BY id DESC LIMIT 1'.format(acDayToday))
+        if cursor.rowcount > 0:
+            earliestAID = cursor.fetchall()[0][0]
         else:
             ## If failed, set the earliest AID equals 1.
             earliestAID = 1
@@ -68,14 +68,58 @@ def main(mode):
             cursor.execute(
                 'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
                 'VALUES ("{}", "{}", {}, {})'.format(
-                    Global.AcFunAPIFuncGetArticleFull, AID, Global.AcFunAPIWsRetryNum, 1))
+                    Global.AcFunAPIFuncGetArticleFull, AID, Global.AcFunAPIWsRetryNum, mode))
         conn.commit()
         logger.add("Requests pushed successfully.", "DEBUG")
     elif mode == 2:
-        pass
+        # Adds and refreshes the most recent 14 days' articles.
+        acDayToday = gadget.date_to_ac_days()
+        acDayDesired = acDayToday - 15
+        cursor.execute('SELECT id FROM ac_articles '
+                       'WHERE contribute_time_ac_day<{} ORDER BY id DESC LIMIT 1'.format(acDayDesired))
+        earliestAID = cursor.fetchall()[0][0]
+        cursor.execute('SELECT id FROM ac_articles ORDER BY id DESC LIMIT 1')
+        newestAID = cursor.fetchall()[0][0]
+        for AID in range(earliestAID + 1, newestAID + 1):
+            if AID % 200 == 0:
+                logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID), "DEBUG")
+            cursor.execute(
+                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
+                'VALUES ("{}", "{}", {}, {})'.format(
+                    Global.AcFunAPIFuncGetArticleFull, AID, Global.AcFunAPIWsRetryNum, mode))
+        conn.commit()
+        logger.add("Requests pushed successfully.", "DEBUG")
     elif mode == 3:
-        pass
+        # Adds and refreshes all site's articles.
+        earliestAID = 1
+        cursor.execute('SELECT id FROM ac_articles ORDER BY id DESC LIMIT 1')
+        newestAID = cursor.fetchall()[0][0]
+        for AID in range(earliestAID + 1, newestAID + 1):
+            if AID % 200 == 0:
+                logger.add("{{{}/{}}} Pushing requests...".format(AID, newestAID), "DEBUG")
+            cursor.execute(
+                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
+                'VALUES ("{}", "{}", {}, {})'.format(
+                    Global.AcFunAPIFuncGetArticleFull, AID, Global.AcFunAPIWsRetryNum, mode))
+        conn.commit()
+        logger.add("Requests pushed successfully.", "DEBUG")
+    elif mode == 4:
+        # Adds and refreshes users' information.
+        cursor.execute("SELECT id from ac_users")
+        userList = cursor.fetchall()
+        userListLength = len(userList)
+        for x in range(userListLength):
+            if x % 200 == 0:
+                logger.add("{{{}/{}}} Pushing requests...".format(x, userListLength), "DEBUG")
+            cursor.execute(
+                'INSERT INTO trend_acws_queue(func, id, max_retry_num, priority) '
+                'VALUES ("{}", "{}", {}, {})'.format(
+                    Global.AcFunAPIFuncGetUserFull, userList[x][0], Global.AcFunAPIWsRetryNum, mode))
+        conn.commit()
+        logger.add("Requests pushed successfully.", "DEBUG")
+    conn.close()
     logger.add("Finish mode {}.".format(mode), "DEBUG")
+
 
 def connect_to_queue():
     try:
@@ -86,6 +130,7 @@ def connect_to_queue():
                                    passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
         connAcWs.set_charset('utf8')
         cursorAcWs = connAcWs.cursor()
+        cursorAcWs.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
     except Exception as e:
         logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
             Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
@@ -103,5 +148,5 @@ if __name__ == "__main__":
     try:
         mode = int(sys.argv[1])
     except:
-        mode = 1 # NOTICE: When manually running it, modify this number to change the mode.
+        mode = 4 # NOTICE: When manually running it, modify this number to change the mode.
     main(mode)

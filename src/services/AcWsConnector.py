@@ -23,6 +23,11 @@ import datetime
 import time
 import json
 
+class requestRemovedError(Exception):
+    def __init__(self, rId):
+        self.msg = "The request {} has been removed".format(rId)
+    def __str__(self):
+        return repr(self.msg)
 
 class AcWsConnector(threading.Thread):
     """
@@ -42,32 +47,33 @@ class AcWsConnector(threading.Thread):
                             "SEVERE", ex=e)
             raise e
 
-        self.ws = None
+        self.ws = [True, None]
         self.get_ws()
-        self.ws_alive = [True]
 
         # Sets up threads.
         self.logger.add("Setting up threads.", "DEBUG")
-        self.acWsSender = AcWsSender(self.ws, self.ws_alive)
-        self.acWsReceiver = AcWsReceiver(self.ws, self.ws_alive)
+        self.acWsSender = AcWsSender(self.ws)
+        self.acWsReceiver = AcWsReceiver(self.ws)
         self.acWsSender.daemon = True
         self.acWsReceiver.daemon = True
 
     def get_ws(self):
         # Connects to AcFun WebSocket.
+        self.ws[1] = None
         self.logger.add("Connecting to AcFun WebSocket...", "DEBUG")
         isConnected = False
         while not isConnected:
             try:
-                self.ws = create_connection(Global.AcFunAPIWsUrl)
+                self.ws[1] = create_connection(Global.AcFunAPIWsUrl)
                 isConnected = True
             except Exception as e:
                 self.logger.add("Failed to connect to AcFun WebSocket.", "WARNING", ex=e)
                 time.sleep(20)
         self.logger.add("Authenticating...", "DEBUG")
-        self.ws.send('{{func:"auth","key":"{}","secret":"{}"}}'.format(Global.AcFunAPIWsKey, Global.AcFunAPIWsSecret))
+        self.ws[1].send(
+            '{{func:"auth","key":"{}","secret":"{}"}}'.format(Global.AcFunAPIWsKey, Global.AcFunAPIWsSecret))
         try:
-            result = json.loads(self.ws.recv(), strict=False)
+            result = json.loads(self.ws[1].recv(), strict=False)
             isSuccess = False
             if "success" in result:
                 isSuccess = result["success"]
@@ -107,9 +113,9 @@ class AcWsConnector(threading.Thread):
                                 "SEVERE")
                 break
 
-            if not self.ws_alive[0]:
+            if not self.ws[0]:
                 self.get_ws()
-                self.ws_alive = [True]
+                self.ws[0] = True
             time.sleep(1)
 
         # Close when interruption or exception occurs.
@@ -130,11 +136,10 @@ class AcWsSender(threading.Thread):
     The sender that is responsible for sending requests.
     """
 
-    def __init__(self, ws, ws_alive):
+    def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsSender")
         self.logger = Logger("AcWsSender")
         self.ws = ws
-        self.ws_alive = ws_alive
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                    Global.mysqlAcWsConnectorDB,
@@ -143,6 +148,7 @@ class AcWsSender(threading.Thread):
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
             self.conn.set_charset("utf8")
             self.cursor = self.conn.cursor()
+            self.cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
@@ -157,11 +163,11 @@ class AcWsSender(threading.Thread):
             self.logger.add("Processing the AcWs Queue...")
             requestList = []
             try:
-                # Gets the next 100 requests from ACWS Queue.
-                self.logger.add("Fetching the next 100 requests from ACWS Queue ...")
+                # Gets the next {{Global.AcFunAPIWsCycleRequestNum}} requests from ACWS Queue.
+                self.logger.add("Fetching the next {} requests from ACWS Queue ...".format(Global.AcFunAPIWsCycleRequestNum))
                 self.cursor.execute(
                     'SELECT request_id, func, id, requested FROM trend_acws_queue '
-                    'WHERE requested=0 ORDER BY priority LIMIT 100')
+                    'WHERE requested=0 ORDER BY priority LIMIT {}'.format(Global.AcFunAPIWsCycleRequestNum))
                 newRequestList = self.cursor.fetchall()
                 self.logger.add("Fetched {} new requests.".format(len(newRequestList)), "DEBUG")
                 requestList.extend(newRequestList)
@@ -184,6 +190,12 @@ class AcWsSender(threading.Thread):
                     else: # Abandons.
                         self.cursor.execute(
                             'DELETE FROM trend_acws_queue WHERE request_id={}'.format(eachTimedOutRequest[0]))
+                        self.cursor.execute('INSERT INTO trend_acws_removed('
+                                            'request_id, func, id'
+                                            ') VALUES ('
+                                            '{}, "{}", "{}"'
+                                            ')'.format(eachTimedOutRequest[0], eachTimedOutRequest[1],
+                                                       eachTimedOutRequest[2]))
                         self.logger.add(
                             "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]),
                             "DEBUG")
@@ -197,7 +209,7 @@ class AcWsSender(threading.Thread):
             for x in range(requestListLength):
                 eachRequest = requestList[x]
                 # Sends the request.
-                if (x + 1) % 50 == 0:
+                if (x + 1) % 25 == 0:
                     debugLevel = "DEBUG"
                 else:
                     debugLevel = "DETAIL"
@@ -207,7 +219,7 @@ class AcWsSender(threading.Thread):
                                                                                         eachRequest[2], eachRequest[3]),
                     debugLevel)
                 try:
-                    self.ws.send(
+                    self.ws[1].send(
                         '{{func:"{}",id:"{}",requestId:"{}{}"}}'.format(eachRequest[1], eachRequest[2],
                                                                         Global.AcFunAPIWsRequestIdPrefix,
                                                                         eachRequest[0]))
@@ -215,12 +227,11 @@ class AcWsSender(threading.Thread):
                     self.logger.add(
                         "Error occurs while sending request {}: func={}, id={}".format(eachRequest[0], eachRequest[1],
                                                                                        eachRequest[2]), "SEVERE", ex=e)
-                    self.ws_alive = [False]
-                    while not self.ws_alive[0]:
+                    self.ws[0] = False
+                    while not self.ws[0]:
                         time.sleep(1)
-                        # time.sleep(0.1) # TODO Delete it when necessary.
+                        # raise e
 
-                    # raise e
                 # Updates AcWs Queue.
                 self.logger.add("Updating AcWs Queue ...")
                 try:
@@ -247,21 +258,21 @@ class AcWsSender(threading.Thread):
                 except Exception as e:
                     self.logger.add("Error occurs during updating the AcWs Queue.", "SEVERE", ex=e)
                     raise e
-
-            time.sleep(Global.AcFunAPIWsCycleGap)
-
+            if requestListLength == 0:
+                time.sleep(Global.AcFunAPIWsCycleGap)
+            else:
+                time.sleep(requestListLength / 40)
 
 class AcWsReceiver(threading.Thread):
     """
     The receiver that is responsible for receiving requests and saving them to database.
     """
 
-    def __init__(self, ws, ws_alive):
+    def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsReceiver")
         self.logger = Logger("AcWsReceiver")
         self.count = 0
         self.ws = ws
-        self.ws_alive = ws_alive
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
                                                                                    Global.mysqlAcWsConnectorDB,
@@ -270,6 +281,7 @@ class AcWsReceiver(threading.Thread):
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
             self.conn.set_charset("utf8")
             self.cursor = self.conn.cursor()
+            self.cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
         except Exception as e:
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlAcWsConnectorDB), "SEVERE", ex=e)
@@ -313,25 +325,25 @@ class AcWsReceiver(threading.Thread):
 
                 # Receives information from the AcFun WebSocket API.
                 try:
-                    wsReceived = self.ws.recv()
+                    wsReceived = self.ws[1].recv()
                 except Exception as e:
                     self.logger.add("Error occurs while receiving request.", "SEVERE", ex=e)
-                    self.ws_alive = [False]
-                    while not self.ws_alive[0]:
+                    self.ws[0] = False
+                    while not self.ws[0]:
                         time.sleep(1)
                 result = gadget.parse_json(wsReceived, strict=False)
                 requestId = result["requestId"][len(Global.AcFunAPIWsRequestIdPrefix):]
 
                 # Gets the request information from AcWs Queue.
                 self.cursor.execute("SELECT func, id FROM trend_acws_queue WHERE request_id={}".format(requestId))
+                abandonedHint = ""
                 if self.cursor.rowcount == 0:
-                    requestRemoved = True
-                    self.logger.add("Request ID={} was removed from AcWs Queue.".format(requestId))
-                else:
-                    requestRemoved = False
+                    self.cursor.execute("SELECT func, id FROM trend_acws_removed WHERE request_id={}".format(requestId))
+                    if self.cursor.rowcount==0:
+                        raise requestRemovedError(requestId)
+                    abandonedHint = "abandoned "
                 rFunc, rId = self.cursor.fetchall()[0]
-
-                self.logger.add("Received requestId={}, func={}, id={}".format(requestId, rFunc, rId))
+                self.logger.add("Received {}requestId={}, func={}, id={}".format(abandonedHint, requestId, rFunc, rId))
 
                 # Parses the information.
                 if rFunc == Global.AcFunAPIFuncGetArticleFull: # Article.
@@ -392,6 +404,9 @@ class AcWsReceiver(threading.Thread):
 
                         if "description" not in result:
                             result["description"] = ""
+
+                        if "img" not in result:
+                            result["img"] = ""
 
                         if "contentImg" not in result:
                             result["contentImg"] = result["img"]
@@ -698,14 +713,15 @@ class AcWsReceiver(threading.Thread):
                 else: # Unrecognized.
                     self.logger.add("Unrecognized func: {}.".format(rFunc), "SEVERE")
                 # Remove request from AcWs Queue.
-                if not requestRemoved:
-                    self.logger.add("Removing request {} from AcWs Queue ...".format(requestId))
-                    try:
-                        self.cursor.execute("DELETE FROM trend_acws_queue WHERE request_id={}".format(requestId))
-                        self.conn.commit()
-                    except Exception as e:
-                        self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE",
-                                        ex=e)
+                self.logger.add("Removing request {} from AcWs Queue ...".format(requestId))
+                try:
+                    self.cursor.execute("DELETE FROM trend_acws_queue WHERE request_id={}".format(requestId))
+                    self.conn.commit()
+                except Exception as e:
+                    self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE",
+                                    ex=e)
+            except requestRemovedError as e:
+                self.logger.add(str(e), "WARNING")
             except Exception as e:
                 self.logger.add("Received invalid data = {}. Skipped.".format(wsReceived), "SEVERE", ex=e)
                 # raise e

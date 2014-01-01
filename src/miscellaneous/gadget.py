@@ -25,7 +25,7 @@ def is_file(filePath):
     return os.path.isfile(filePath)
 
 
-def write_file(filename, content, form="json", append=True, end=True, toConsole=False):
+def write_file(filename, content, form="json", append=True, end=True, toConsole=False, suppress=True):
     try:
         folderName = os.path.dirname(filename)
         try:
@@ -39,11 +39,17 @@ def write_file(filename, content, form="json", append=True, end=True, toConsole=
         if not form:
             file.write(content)
             if toConsole:
-                print(content, end="")
+                s = content
+                if len(s) > 400:
+                    s = s[:400] + "..."
+                print(s, end="")
         elif form == "json":
             file.write(json.dumps(content))
             if toConsole:
-                print(json.dumps(content), end="")
+                s = json.dumps(content)
+                if len(s) > 400:
+                    s = s[:400] + "..."
+                print(s, end="")
         if end:
             if is_panguine():
                 end_str = "\r"
@@ -54,7 +60,10 @@ def write_file(filename, content, form="json", append=True, end=True, toConsole=
                 print(end_str, end="")
         file.close()
     except Exception as e:
-        raise e
+        if suppress:
+            pass
+        else:
+            raise e
     return True
 
 
@@ -234,6 +243,8 @@ def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestU
     if highestUploaderScore != 0:
         if uploaderScore == 0:
             uploaderScore = score_trend
+        if uploaderScore == 0:
+            uploaderScore = 1
         if highestUploaderScore / uploaderScore <= 2000:
             score_trend *= (1 + ((highestUploaderScore - uploaderScore) / uploaderScore) / 10000)
         else:
@@ -242,6 +253,8 @@ def calc_score(hits, comments, stows, parts, isOriginal, uploaderScore, highestU
     if highestChannelScore != 0:
         if channelScore == 0:
             channelScore = score_trend
+        if channelScore == 0:
+            channelScore = 1
         if highestChannelScore / channelScore <= 1000:
             score_trend *= (1 + ((highestChannelScore - channelScore) / channelScore) / 2000)
         else:
