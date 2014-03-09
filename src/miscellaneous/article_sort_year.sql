@@ -1,0 +1,1 @@
+SELECT id, title, description, user_id, user_name, contribute_time_day, contribute_time_month, contribute_time_year, hits, comments, stows, parts, score_trend, channel_name FROM trend_acws.ac_articles WHERE contribute_time_year=2012 AND survive=2 ORDER BY score_trend DESC LIMIT 500;

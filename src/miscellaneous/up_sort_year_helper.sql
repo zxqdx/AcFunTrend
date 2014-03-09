@@ -1,0 +1,1 @@
+SELECT id FROM ac_articles WHERE contribute_time_year=2012 ORDER BY id LIMIT 1

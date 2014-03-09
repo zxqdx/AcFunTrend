@@ -128,7 +128,7 @@ def connect_to_queue():
                                                                          Global.mysqlUser), "DEBUG")
         connAcWs = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                    passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-        connAcWs.set_charset('utf8')
+        connAcWs.set_charset(Global.mysqlEncoding)
         cursorAcWs = connAcWs.cursor()
         cursorAcWs.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
     except Exception as e:
@@ -148,5 +148,5 @@ if __name__ == "__main__":
     try:
         mode = int(sys.argv[1])
     except:
-        mode = 4 # NOTICE: When manually running it, modify this number to change the mode.
+        mode = 1 # NOTICE: When manually running it, modify this number to change the mode.
     main(mode)

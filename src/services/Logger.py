@@ -38,6 +38,7 @@ class Logger(object):
                       -- SEVERE: Record into the normal log file and the error log file.
                       -- WARNING: Record into the normal log file.
                       -- INFO: Record into the normal log file.
+                      -- DETAIL: Record into the normal log file. It will NOT be printed to the console.
         @Param ex: Exception. If it is not None, append the exception after the message.
         """
         currentTime = self._time()

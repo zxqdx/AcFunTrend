@@ -1,0 +1,1 @@
+SELECT user_id, user_name, count(id), sum(score_trend), sum(hits), sum(comments), sum(stows), sum(parts) FROM ac_articles WHERE id>=280390 AND id<=514839 AND survive=2 GROUP BY user_id ORDER BY sum(score_trend) DESC LIMIT 500

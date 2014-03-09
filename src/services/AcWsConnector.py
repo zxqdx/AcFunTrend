@@ -23,11 +23,14 @@ import datetime
 import time
 import json
 
-class requestRemovedError(Exception):
+
+class RequestRemovedError(Exception):
     def __init__(self, rId):
         self.msg = "The request {} has been removed".format(rId)
+
     def __str__(self):
         return repr(self.msg)
+
 
 class AcWsConnector(threading.Thread):
     """
@@ -101,13 +104,13 @@ class AcWsConnector(threading.Thread):
                 self.logger.add("The service is interrupted by {}.".format(interrupter), "SEVERE")
                 break
 
-            self.acWsReceiver.join(0.1)
+            # self.acWsReceiver.join(0.1)
             if not self.acWsReceiver.isAlive():
                 self.logger.add("An error occurs in thread {}. The service is about to quit.".format("AcWsReceiver"),
                                 "SEVERE")
                 break
-            self.acWsSender.join(0.1)
 
+            # self.acWsSender.join(0.1)
             if not self.acWsSender.isAlive():
                 self.logger.add("An error occurs in thread {}. The service is about to quit.".format("AcWsSender"),
                                 "SEVERE")
@@ -138,7 +141,7 @@ class AcWsSender(threading.Thread):
 
     def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsSender")
-        self.logger = Logger("AcWsSender")
+        self.logger = Logger(self.name)
         self.ws = ws
         try:
             self.logger.add("Connecting to MYSQL {}:{}. DB={}. User={} ...".format(Global.mysqlHost, Global.mysqlPort,
@@ -146,7 +149,7 @@ class AcWsSender(threading.Thread):
                                                                                    Global.mysqlUser), "DEBUG")
             self.conn = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-            self.conn.set_charset("utf8")
+            self.conn.set_charset(Global.mysqlEncoding)
             self.cursor = self.conn.cursor()
             self.cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
         except Exception as e:
@@ -164,7 +167,8 @@ class AcWsSender(threading.Thread):
             requestList = []
             try:
                 # Gets the next {{Global.AcFunAPIWsCycleRequestNum}} requests from ACWS Queue.
-                self.logger.add("Fetching the next {} requests from ACWS Queue ...".format(Global.AcFunAPIWsCycleRequestNum))
+                self.logger.add(
+                    "Fetching the next {} requests from ACWS Queue ...".format(Global.AcFunAPIWsCycleRequestNum))
                 self.cursor.execute(
                     'SELECT request_id, func, id, requested FROM trend_acws_queue '
                     'WHERE requested=0 ORDER BY priority LIMIT {}'.format(Global.AcFunAPIWsCycleRequestNum))
@@ -190,12 +194,20 @@ class AcWsSender(threading.Thread):
                     else: # Abandons.
                         self.cursor.execute(
                             'DELETE FROM trend_acws_queue WHERE request_id={}'.format(eachTimedOutRequest[0]))
-                        self.cursor.execute('INSERT INTO trend_acws_removed('
-                                            'request_id, func, id'
-                                            ') VALUES ('
-                                            '{}, "{}", "{}"'
-                                            ')'.format(eachTimedOutRequest[0], eachTimedOutRequest[1],
-                                                       eachTimedOutRequest[2]))
+                        try:
+                            self.cursor.execute('INSERT INTO trend_acws_removed('
+                                                'request_id, func, id'
+                                                ') VALUES ('
+                                                '{}, "{}", "{}"'
+                                                ')'.format(eachTimedOutRequest[0], eachTimedOutRequest[1],
+                                                           eachTimedOutRequest[2]))
+                        except Exception as ex:
+                            self.cursor.execute('UPDATE trend_acws_removed SET '
+                                                'func="{}", '
+                                                'id="{}"'
+                                                'WHERE request_id={}'.format(eachTimedOutRequest[2],
+                                                                               eachTimedOutRequest[1],
+                                                                               eachTimedOutRequest[0]))
                         self.logger.add(
                             "Abandoned request: func={}, id={}".format(eachTimedOutRequest[1], eachTimedOutRequest[2]),
                             "DEBUG")
@@ -261,7 +273,9 @@ class AcWsSender(threading.Thread):
             if requestListLength == 0:
                 time.sleep(Global.AcFunAPIWsCycleGap)
             else:
-                time.sleep(requestListLength / 40)
+                time.sleep(requestListLength / Global.AcFunAPIWsCycleRequestNum * 1.8)
+                pass
+
 
 class AcWsReceiver(threading.Thread):
     """
@@ -270,7 +284,7 @@ class AcWsReceiver(threading.Thread):
 
     def __init__(self, ws):
         threading.Thread.__init__(self, name="AcWsReceiver")
-        self.logger = Logger("AcWsReceiver")
+        self.logger = Logger(self.name)
         self.count = 0
         self.ws = ws
         try:
@@ -279,7 +293,7 @@ class AcWsReceiver(threading.Thread):
                                                                                    Global.mysqlUser), "DEBUG")
             self.conn = pymysql.connect(host=Global.mysqlHost, port=Global.mysqlPort, user=Global.mysqlUser,
                                         passwd=Global.mysqlPassword, db=Global.mysqlAcWsConnectorDB)
-            self.conn.set_charset("utf8")
+            self.conn.set_charset(Global.mysqlEncoding)
             self.cursor = self.conn.cursor()
             self.cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
         except Exception as e:
@@ -314,8 +328,7 @@ class AcWsReceiver(threading.Thread):
                 except Exception as e:
                     self.logger.add("Failed to get highest uploader score. Treat it as 0.", "SEVERE")
                 self.logger.add(
-                    "Highest score: uploader = {}, channel = {}".format(highestUploaderScore, highestChannelScore),
-                    "DEBUG")
+                    "Highest score: uploader = {}, channel = {}".format(highestUploaderScore, highestChannelScore))
 
             try:
                 # Initialization
@@ -339,8 +352,8 @@ class AcWsReceiver(threading.Thread):
                 abandonedHint = ""
                 if self.cursor.rowcount == 0:
                     self.cursor.execute("SELECT func, id FROM trend_acws_removed WHERE request_id={}".format(requestId))
-                    if self.cursor.rowcount==0:
-                        raise requestRemovedError(requestId)
+                    if self.cursor.rowcount == 0:
+                        raise RequestRemovedError(requestId)
                     abandonedHint = "abandoned "
                 rFunc, rId = self.cursor.fetchall()[0]
                 self.logger.add("Received {}requestId={}, func={}, id={}".format(abandonedHint, requestId, rFunc, rId))
@@ -354,7 +367,7 @@ class AcWsReceiver(threading.Thread):
                     articleHasRecord = self.cursor.rowcount > 0
                     if articleHasRecord:
                         fetchResult = self.cursor.fetchall()[0]
-                        isSurvive = fetchResult[0] == 1
+                        isSurvive = fetchResult[0] == 2
                         previousHits, previousComments, previousStows, \
                         previousParts, previousScore, previousScoreTrend, \
                         previousUserId, previousChannelId, previousTags, previousTypeId = fetchResult[1:]
@@ -366,7 +379,13 @@ class AcWsReceiver(threading.Thread):
                         self.logger.add("This article ac{} does not have record yet.".format(rId))
 
                     if result["statusCode"] == 200: # Article exists.
-                        self.logger.add("Received survived ac{}.".format(rId), "DEBUG")
+                        if "status" in result["result"]:
+                            articleStatus = result["result"]["status"]
+                        else:
+                            self.logger.add("No status in API. Treat it as 2.", "WARNING")
+                            articleStatus = 2
+
+                        self.logger.add("Received ac{} with status={}.".format(rId, articleStatus), "DEBUG")
 
                         result = result["result"]
                         if result["id"] != int(rId):
@@ -442,6 +461,7 @@ class AcWsReceiver(threading.Thread):
                                                          currentChannelScore, highestChannelScore, userRank)
                         self.logger.add("The score of the article is {}".format(articleScore))
 
+                        # ac_articles
                         if articleHasRecord:
                             self.logger.add("Updating ac{}@ac_articles ...".format(rId))
                             self.cursor.execute('SELECT sort_time FROM ac_articles '
@@ -461,13 +481,13 @@ class AcWsReceiver(threading.Thread):
                                                 'img="{}", content_img="{}", '
                                                 'hits={}, week_views={}, month_views={}, day_views={}, '
                                                 'comments={}, stows={}, parts={}, score={}, score_trend={}, '
-                                                'channel_name="{}", channel_id={}, survive=1, '
+                                                'channel_name="{}", channel_id={}, survive={}, '
                                                 'tags="{}" '
                                                 'WHERE id={}'.format(result["typeId"],
                                                                      self.escape_string(result["title"]),
                                                                      self.escape_string(result["description"]),
                                                                      result["userId"],
-                                                                     self.escape_string(result["userName"]),
+                                                                     self.escape_string(result["username"]),
                                                                      result["sortTime"],
                                                                      sortTimeCount, result["lastFeedbackTime"],
                                                                      self.escape_string(result["img"]),
@@ -477,7 +497,7 @@ class AcWsReceiver(threading.Thread):
                                                                      result["comments"], result["stows"], resultParts,
                                                                      result["score"], articleScore,
                                                                      self.escape_string(result["channelName"]),
-                                                                     result["channelId"],
+                                                                     result["channelId"], articleStatus,
                                                                      self.escape_string(json.dumps(tagList)), rId))
                         else:
                             self.logger.add("Inserting ac{}@ac_articles ...".format(rId))
@@ -492,16 +512,16 @@ class AcWsReceiver(threading.Thread):
                                                 'contribute_time_week, contribute_time_month, contribute_time_year, '
                                                 'sort_time, last_feedback_time, img, content_img, '
                                                 'hits, week_views, month_views, day_views, comments, stows, parts, '
-                                                'score, score_trend, channel_name, channel_id, tags'
+                                                'score, score_trend, channel_name, channel_id, survive, tags'
                                                 ') VALUES ('
                                                 '{}, {}, "{}", "{}", {}, "{}", '
                                                 '{}, {}, {}, {}, {}, {}, '
                                                 '{}, {}, "{}", "{}", '
                                                 '{}, {}, {}, {}, {}, {}, {}, '
-                                                '{}, {}, "{}", {}, "{}"'
+                                                '{}, {}, "{}", {}, {}, "{}"'
                                                 ')'.format(rId, result["typeId"], self.escape_string(result["title"]),
                                                            self.escape_string(result["description"]), result["userId"],
-                                                           self.escape_string(result["userName"]),
+                                                           self.escape_string(result["username"]),
                                                            result["contributeTime"], contDatetime.day, contAcDay,
                                                            contWeek, contDatetime.month, contDatetime.year,
                                                            result["sortTime"], result["lastFeedbackTime"],
@@ -511,7 +531,7 @@ class AcWsReceiver(threading.Thread):
                                                            result["dayViews"], result["comments"], result["stows"],
                                                            resultParts, result["score"], articleScore,
                                                            self.escape_string(result["channelName"]),
-                                                           result["channelId"],
+                                                           result["channelId"], articleStatus,
                                                            self.escape_string(json.dumps(tagList))))
                         # ac_users
                         ## Removes old data.
@@ -545,7 +565,7 @@ class AcWsReceiver(threading.Thread):
                                                 '{}, "{}", {}, {}, {}, {}, '
                                                 '{}, {}, 1, 1'
                                                 ')'.format(result["typeId"], result["userId"],
-                                                           self.escape_string(result["userName"]),
+                                                           self.escape_string(result["username"]),
                                                            result["views"], result["comments"], result["stows"],
                                                            resultParts, result["score"], articleScore))
 
@@ -624,47 +644,48 @@ class AcWsReceiver(threading.Thread):
                                                                eachTag["managerId"]))
 
                         # ac_delta
-                        acDay = gadget.date_to_ac_days(gadget.timestamp_to_datetime(result["sortTime"]))
-                        if articleHasRecord:
-                            self.logger.add("Updating ac{} into ac_delta ...".format(rId))
-                            self.cursor.execute('SELECT days, hits, comments, stows, sorts '
-                                                'FROM ac_delta WHERE id={}'.format(rId))
-                            if self.cursor.rowcount > 0:
-                                deltaHasRecord = True
-                                dayList, hitList, commentList, stowList, sortList = self.cursor.fetchall()[0]
-                                dayList, hitList, commentList, stowList, sortList = json.loads(dayList), json.loads(
-                                    hitList), json.loads(commentList), json.loads(stowList), json.loads(sortList)
-                                try:
-                                    dayIndex = dayList.index(acDay)
-                                    hitList[dayIndex] = result["views"]
-                                    commentList[dayIndex] = result["comments"]
-                                    stowList[dayIndex] = result["stows"]
-                                    if sortTimeModified:
-                                        sortList[acDay] += 1
-                                except ValueError:
-                                    dayList.append(acDay)
-                                    hitList.append(result["views"])
-                                    commentList.append(result["comments"])
-                                    stowList.append(result["stows"])
-                                    sortList[acDay] = 1
-                            else: # This should not happen.
-                                deltaHasRecord = False
-                        if (not articleHasRecord) or (not deltaHasRecord):
-                            self.logger.add("Inserting ac{} into ac_delta".format(rId))
-                            self.cursor.execute('INSERT INTO ac_delta('
-                                                'id, days, hits, comments, stows, sorts'
-                                                ') VALUES ('
-                                                '{}, "{}", "{}", "{}", "{}", "{}"'
-                                                ')'.format(rId, [acDay], [result["views"]], [result["comments"]],
-                                                           [result["stows"]],
-                                                           self.escape_string(json.dumps({acDay: 1}))))
+                        if articleStatus == 2:
+                            acDay = gadget.date_to_ac_days(gadget.timestamp_to_datetime(result["sortTime"]))
+                            if articleHasRecord:
+                                self.logger.add("Updating ac{} into ac_delta ...".format(rId))
+                                self.cursor.execute('SELECT days, hits, comments, stows, sorts '
+                                                    'FROM ac_delta WHERE id={}'.format(rId))
+                                if self.cursor.rowcount > 0:
+                                    deltaHasRecord = True
+                                    dayList, hitList, commentList, stowList, sortList = self.cursor.fetchall()[0]
+                                    dayList, hitList, commentList, stowList, sortList = json.loads(dayList), json.loads(
+                                        hitList), json.loads(commentList), json.loads(stowList), json.loads(sortList)
+                                    try:
+                                        dayIndex = dayList.index(acDay)
+                                        hitList[dayIndex] = result["views"]
+                                        commentList[dayIndex] = result["comments"]
+                                        stowList[dayIndex] = result["stows"]
+                                        if sortTimeModified:
+                                            sortList[acDay] += 1
+                                    except:
+                                        dayList.append(acDay)
+                                        hitList.append(result["views"])
+                                        commentList.append(result["comments"])
+                                        stowList.append(result["stows"])
+                                        sortList[acDay] = 1
+                                else: # This should not happen.
+                                    deltaHasRecord = False
+                            if (not articleHasRecord) or (not deltaHasRecord):
+                                self.logger.add("Inserting ac{} into ac_delta".format(rId))
+                                self.cursor.execute('INSERT INTO ac_delta('
+                                                    'id, days, hits, comments, stows, sorts'
+                                                    ') VALUES ('
+                                                    '{}, "{}", "{}", "{}", "{}", "{}"'
+                                                    ')'.format(rId, [acDay], [result["views"]], [result["comments"]],
+                                                               [result["stows"]],
+                                                               self.escape_string(json.dumps({acDay: 1}))))
                         self.conn.commit()
                     elif result["statusCode"] == 402: # Article does not exist.
                         self.logger.add("Article does not exist: ac{}".format(rId))
                         if articleHasRecord and isSurvive:
                             # Changes survive in ac_articles.
-                            self.logger.add("Changing survive mode of ac{} to 0 ...".format(rId), "DEBUG")
-                            self.cursor.execute("UPDATE ac_articles SET survive=0 WHERE id={}".format(rId))
+                            self.logger.add("Changing survive mode of ac{} to -2 ...".format(rId), "DEBUG")
+                            self.cursor.execute("UPDATE ac_articles SET survive=-2 WHERE id={}".format(rId))
                             self.conn.commit()
                     else:
                         self.logger.add(
@@ -701,7 +722,7 @@ class AcWsReceiver(threading.Thread):
                         if "onlineDuration" in result:
                             sqlUserInfo += ', online_duration={}'.format(result["onlineDuration"])
                         self.cursor.execute('UPDATE ac_users SET '
-                                            'name="{}"{}'
+                                            'name="{}"{} '
                                             'WHERE id={}'.format(self.escape_string(result["name"]), sqlUserInfo, rId))
                         self.conn.commit()
                     elif result["statusCode"] == 402:
@@ -720,7 +741,7 @@ class AcWsReceiver(threading.Thread):
                 except Exception as e:
                     self.logger.add("Failed to remove request {} from AcWs Queue.".format(requestId), "SEVERE",
                                     ex=e)
-            except requestRemovedError as e:
+            except RequestRemovedError as e:
                 self.logger.add(str(e), "WARNING")
             except Exception as e:
                 self.logger.add("Received invalid data = {}. Skipped.".format(wsReceived), "SEVERE", ex=e)

@@ -1,0 +1,96 @@
+{
+    "greeting": "各位{timePeriod}好，窝是谷歌娘。今天是{year}年{month}月{day}日星期{weekDay}，欢迎收听爱稀饭趋势日报。",
+    "afterGreeting": [
+        "爱稀饭趋势，用数据说话。",
+        "今天也要上趋势娘哦。",
+        "今天也要上趋势猴哦。",
+        "今天也要上趋势哦。"
+    ],
+    "articleRank": {
+        "description": "下面进入投稿每日排行榜环节。此环节将为您播报今日截至目前最热门的投稿。",
+        "articleTemplate": {
+            "conj": [
+                "接下来，",
+                "好的，",
+                "我看一下，",
+                "咦，",
+                "卧槽，",
+                "你为何这么吊，",
+                "你知道么，",
+                "那么，"
+            ],
+            "channelAppellation": [
+                "区",
+                "分区",
+                "频道"
+            ],
+            "rank": [
+                "第{rankText}名是{title}，阿婆主是{upName}，来自{channelName}{channelAppellation}。",
+                "第{rankText}名是来自{channelName}{channelAppellation}的、{upName}投稿的{title}。",
+                "{channelName}{channelAppellation}的{upName}发布的{title}排名第{rankText}。",
+                "{upName}发布在{channelName}{channelAppellation}的{title}排名第{rankText}。",
+                "在{channelName}{channelAppellation}中由{upName}发布的{title}排名第{rankText}名。"
+            ],
+            "hits": [
+                "点击{hitsText}",
+                "点击数{hitsText}",
+                "点击有{hitsText}次",
+                "有{hitsText}次点击",
+                "访问量为{hitsText}"
+            ],
+            "comments": [
+                "评论{commentsText}",
+                "评论数{commentsText}",
+                "评论了{commentsText}次",
+                "有{commentsText}次评论",
+                "评论共计{commentsText}条"
+            ],
+            "stows": [
+                "收藏{stowsText}",
+                "收藏数{stowsText}",
+                "收藏了{stowsText}次",
+                "有{stowsText}位用户收藏",
+                "收藏达{stowsText}次"
+            ],
+            "description": [
+                "投稿简介是：{descText}。",
+                "{descLength}字投稿简介如下：{descText}。",
+                "我读一下简介：{descText}。"
+            ],
+            "conj2": [
+                "感兴趣的快去看看吧，",
+                "欢迎前去围观，",
+                "不去看看吗？",
+                "千万别错过了哦，",
+                "欢迎捧场，"
+            ],
+            "id": [
+                "投稿爱地是{idText}",
+                "爱地我只说两边，{idText}",
+                "爱地听仔细了，{idText}",
+                "传送门爱地{idText}"
+            ],
+            "idConj": [
+                "，{idText}",
+                "，重复一遍，{idText}",
+                "，再说一遍，{idText}",
+                "，最后一遍，{idText}",
+                "，第二遍，{idText}"
+            ],
+            "afterId": [
+                "传送的方法请在此网页上找。",
+                "如果没听清楚，欢迎倒回去听。",
+                "呼，喘口气。",
+                "播报结束后我就去找{upName}请客吃饭了。"
+            ]
+        },
+        "finishing": "热门投稿排行榜播报结束。"
+    },
+    "ending": "听众朋友们，本次爱稀饭趋势日报就到此为止了，下次的同一时间，我们再见！",
+    "moe": [
+        "别忘了上趋势哦！",
+        "欢迎上趋势查看更多榜单！",
+        "呼累死我了哼。",
+        "总算结束了，去要工资了。"
+    ]
+}

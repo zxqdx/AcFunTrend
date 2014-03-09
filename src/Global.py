@@ -25,9 +25,9 @@ AcFunAPIWsUrl = "ws://{}:{}/ws".format(AcFunAPIHost, AcFunAPIPort)
 AcFunAPIWsKey = "3fe3f2b10bbad0a1"
 AcFunAPIWsSecret = "e0c64e4b2c6eba73a1bb2b5ba2a854bbc1fa592f"
 AcFunAPIWsRequestIdPrefix = "AcTr-"
-AcFunAPIWsCycleRequestNum = 100
+AcFunAPIWsCycleRequestNum = 15
 AcFunAPIWsTimeout = 30
-AcFunAPIWsRetryNum = 3
+AcFunAPIWsRetryNum = 2
 AcFunAPIWsCycleGap = 10
 AcFunAPIFuncGetArticle = "content.get"
 AcFunAPIFuncGetArticleFull = "fullcontent.get"
@@ -41,7 +41,14 @@ if isDebug:
     mysqlHost = "127.0.0.1"
     mysqlPassword = "miaowu"
     mysqlPort = 3306
-    mysqlAcWsConnectorDB = "trend_acws"
-    mysqlAcArticleDB = "trend_articles"
 else:
     raise NotImplementedError("Not yet deployed.")
+mysqlAcWsConnectorDB = "trend_acws"
+mysqlApiDB = "trend_api"
+mysqlEncoding = "utf8mb4"
+
+TrendAPIPoolNum = 10
+TrendAPIQueryCycle = 2
+TrendAPICacheTimeoutShort = 3600 # 1hr
+TrendAPICacheTimeoutMedium = 28800 # 8hr
+TrendAPICacheTimeoutLong = 259200 # 3d

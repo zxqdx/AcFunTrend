@@ -164,7 +164,7 @@ def get_page(host, url, port=80, timeout=None, form=None, retryNum=-1, sleep=1, 
 
     resultWrapper = [None, None]
     try_until_sign_appears(None, lambda: get_result(resultWrapper),
-                           failedFunc=lambda: raise_exception("Failed to GET http:{}:{}{}".format(host, port, url)),
+                           failedFunc=lambda: raise_exception("Failed to GET http://{}:{}{}".format(host, port, url)),
                            retryNum=retryNum, sleep=sleep, logger=logger)
     if not resultWrapper[1]:
         resultWrapper[1] = ""
@@ -281,6 +281,7 @@ def parse_json(s, strict=False):
             return json.loads(s, strict=strict)
         except ValueError as e:
             import re
+
             err = str(e)
             pattern = re.compile(r"\(char (\d*)\)")
             escapeIndex = int(pattern.findall(err)[0])
