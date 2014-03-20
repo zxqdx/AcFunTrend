@@ -171,6 +171,15 @@ class ApiPoolHandler(threading.Thread):
                             datetime.datetime.now() + datetime.timedelta(seconds=eachQueryTimeout)),
                                                                 self.escape_string(json.dumps(resultJson)),
                                                                 self.escape_string(currentQuery)))
+                    else:
+                        self.cursor.execute('INSERT INTO trend_api_cache(query, expire_time, result) '
+                                            'VALUES ("{}", {}, "{}")'.format(self.escape_string(eachQuery),
+                                                                             gadget.datetime_to_timestamp(
+                                                                                 datetime.datetime.now()
+                                                                                 + datetime.timedelta(
+                                                                                     seconds=eachQueryTimeout)),
+                                                                             self.escape_string(
+                                                                                 json.dumps(resultJson))));
                     # Delete query from queue.
                     self.logger.add("Deleting query from queue.")
                     self.cursor.execute('DELETE FROM trend_api_queue '
@@ -255,6 +264,11 @@ class ApiQueueHandler(threading.Thread):
                     if eachPriority not in self.queue[eachPoolId]:
                         self.queue[eachPoolId][eachQuery] = {}
                     if eachQuery not in self.queue[eachPoolId][eachPriority]:
+                        # Check whether same query with other priorities exists.
+                        for eachPriority in self.queue[eachPoolId]:
+                            if eachQuery in self.queue[eachPoolId][eachPriority]:
+                                del self.queue[eachPoolId][eachPriority][eachQuery]
+                        # Add into the corresponding priority queue.
                         self.queue[eachPoolId][eachPriority][eachQuery] = {"finished": False}
             except Exception as e:
                 self.logger.add("Unknown error occurred.", "SEVERE", ex=e)

@@ -40,5 +40,5 @@ out
 AcFunTrendIntelliJ.iml
 debug
 .idea
-.trendlog
-.slock
+*.trendlog
+*.slock

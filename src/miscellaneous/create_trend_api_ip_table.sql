@@ -27,7 +27,7 @@ DROP TABLE IF EXISTS `trend_api_ip_table`;
 CREATE TABLE `trend_api_ip_table` (
   `ip` varchar(15) NOT NULL,
   `count` int(11) NOT NULL,
-  `date` varchar(8) NOT NULL
+  `ac_day` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -40,4 +40,4 @@ CREATE TABLE `trend_api_ip_table` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-03-06 19:00:58
+-- Dump completed on 2014-03-17 17:25:15
