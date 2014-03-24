@@ -379,6 +379,8 @@ class AcWsReceiver(threading.Thread):
                         self.logger.add("This article ac{} does not have record yet.".format(rId))
 
                     if result["statusCode"] == 200: # Article exists.
+                        # status: -2 = does not exist. -1 = rejected. 0 = draft. 1 = waiting for editor.
+                        # 2 = passed. 3 = hidden(?)
                         if "status" in result["result"]:
                             articleStatus = result["result"]["status"]
                         else:

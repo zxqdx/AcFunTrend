@@ -1,648 +1,648 @@
 {
-    "desc": "In this page you will see the description for Trend API.",
-    "preface": "# Preface\n## Document\nIn this document, you will find an `URL` and an `ORD` for each API layer.\n### URL\n`URL` is the current API's url. By default, you should use `GET` method to call the API.\n### ORD\n`ORD` represents **order**. It:\n* Gives the index of the current API.  \n* Suggests a recommended form of representing the current API.\n\n## Response\nCurrently, we only respond your request in forms of JSON. Please notice that there are three possible situations that our API may respond:\n### Success\nIf `success` is `true`, `content` will be the desired response.  \n``` json\n{\"success\": true, \"content\": {...}}\n```\n### In Query\nIf `success` is `false` AND `query` in `content` is `true`, `status` will be the status of current request.<br>\nIf this occurs, please retry your request every few seconds.  \n``` json\n{\"success\": false, \"content\": {\"query\": true, \"status\": {...}}}\n```\n### Failed\nIf `success` is `false` AND `query` in `content` is `false`, `reason` will be the explanation for failure.  \n``` json\n{\"success\": false, \"content\": {\"query\": false, \"reason\": {...}}}\n```\n\n## TimeStamp\nIn order to fix AJAX bugs for Internet Explorer, you should better add a timestamp parameter (e.g. `ts`).",
-    "url": "http://trend.acfun.tv/api/",
-    "list": {
-        "www": {
-            "ord": 1,
-            "desc": "In this section, you will see the APIs related to the main site.",
-            "url": "www/",
-            "list": {
-                "Assistant": {
-                    "ord": 1,
-                    "desc": "The assistant APIs which are usually used in calling other APIs.",
-                    "url": "assistant/",
-                    "list": {
-                        "Channel List": {
-                            "ord": 1,
-                            "desc": "Gets the channel list.",
-                            "pre": true,
-                            "url": "channel_list?kv={kvContent}",
-                            "param": {
-                                "kvContent": {
-                                    "desc": "Define the content of key and value.",
-                                    "type": "int",
-                                    "list": {
-                                        "0": "key is channelID and value is channelName",
-                                        "1": "key is channelName and value is channelID",
-                                        "": "key is channelID and value is channelName"
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of dictionaries with specified key-value.",
-                                "format": "[{key: value}, ...]"
-                            },
-                            "example": [
-                                {
-                                    "req": {},
-                                    "res": {
-                                        "content": "tba"
-                                    }
-                                },
-                                {
-                                    "req": {
-                                        "desc": "The reverse-order request.",
-                                        "param": {
-                                            "kvContent": 2
-                                        }
-                                    },
-                                    "res": {
-                                        "content": "tba"
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                },
-                "Rank": {
-                    "ord": 2,
-                    "desc": "The rank APIs that provide various types of rankings.",
-                    "url": "rank/",
-                    "list": {
-                        "Articles": {
-                            "ord": 1,
-                            "desc": "Gets the top 100 articles.",
-                            "pre": true,
-                            "url": "articles?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}&rev={reverse}",
-                            "param": {
-                                "channelID": {
-                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on channels. All channels' article will be taken into consideration.",
-                                        "other IDs": "Limit article range in specified channel."
-                                    }
-                                },
-                                "fromTS": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be smaller than `toTS`.",
-                                    "type": "int"
-                                },
-                                "toTS": {
-                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be larger than `fromTS`.",
-                                    "type": "int"
-                                },
-                                "sortMethod": {
-                                    "desc": "Sort method.",
-                                    "type": "string",
-                                    "list": {
-                                        "score": "Sort by score.",
-                                        "hit": "Sort by number of hits.",
-                                        "comment": "Sort by number of comments.",
-                                        "stow": "Sort by number of stows. (Stow means Favorite in this case.)",
-                                        "part": "Sort by number of parts.",
-                                        "last": "Sort by the datetime of the last reply."
-                                    }
-                                },
-                                "rev": {
-                                    "desc": "Reverse the rank order. If it is `true`, the API will send back the most **unpopular** articles.",
-                                    "type": "boolean",
-                                    "list": {
-                                        "": "The most popular articles.",
-                                        "true": "The most unpopular articles.",
-                                        "false": "The most popular articles."
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted articles.",
-                                "format": "[article, article, ...]\n[tba] // Each Article."
-                            }
-                        },
-                        "Uploaders": {
-                            "ord": 2,
-                            "desc": "Gets the top 100 uploaders according to the uploader's specified articles.",
-                            "pre": true,
-                            "url": "uploaders?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
-                            "param": {
-                                "channelID": {
-                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on channels. All channels' article will be taken into consideration.",
-                                        "other IDs": "Limit article range in specified channel."
-                                    }
-                                },
-                                "fromTS": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be smaller than `toTS`.",
-                                    "type": "int"
-                                },
-                                "toTS": {
-                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be larger than `fromTS`.",
-                                    "type": "int"
-                                },
-                                "sortMethod": {
-                                    "desc": "Sort method.",
-                                    "type": "string",
-                                    "list": {
-                                        "score": "Sort by the total score.",
-                                        "hit": "Sort by the total number of hits.",
-                                        "comment": "Sort by the total number of comments.",
-                                        "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
-                                        "part": "Sort by the total number of parts.",
-                                        "articles": "Sort by number of uploader's articles."
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted uploaders.",
-                                "format": "[uploader, uploader, ...]\n[tba] // Each Uploader."
-                            }
-                        },
-                        "Tags": {
-                            "ord": 3,
-                            "desc": "Gets the top 200 tags according to the tag's specified articles.",
-                            "pre": true,
-                            "url": "tags?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
-                            "param": {
-                                "channelID": {
-                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on channels. All channels' article will be taken into consideration.",
-                                        "other IDs": "Limit article range in specified channel."
-                                    }
-                                },
-                                "fromTS": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be smaller than `toTS`.",
-                                    "type": "int"
-                                },
-                                "toTS": {
-                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be larger than `fromTS`.",
-                                    "type": "int"
-                                },
-                                "sortMethod": {
-                                    "desc": "Sort method.",
-                                    "type": "string",
-                                    "list": {
-                                        "score": "Sort by the total score.",
-                                        "hit": "Sort by the total number of hits.",
-                                        "comment": "Sort by the total number of comments.",
-                                        "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
-                                        "part": "Sort by the total number of parts.",
-                                        "articles": "Sort by number of uploader's articles."
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted tags.",
-                                "format": "[tag, tag, ...]\n[tba] // Each Tag."
-                            }
-                        },
-                        "Sofa": {
-                            "ord": 4,
-                            "desc": "Gets the top 1000 user who have the most first-comment in articles.",
-                            "pre": true,
-                            "url": "sofa?from={fromRank}&to={toRank}",
-                            "param": {
-                                "fromRank": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be smaller than `toRank`. Also, `1 <= fromRank <= 1000`.",
-                                    "type": "int"
-                                },
-                                "toRank": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be larger than `fromRank`. Also, `1 <= toRank <= 1000`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted users.",
-                                "format": "[user, user, ...]\n[tba] // Each User."
-                            }
-                        }
-                    }
-                },
-                "Stat": {
-                    "ord": 3,
-                    "desc": "The statistic APIs that provide statistical data for AcFun.",
-                    "url": "stat/",
-                    "list": {
-                        "Total": {
-                            "ord": 1,
-                            "desc": "Gets the total statistics for AcFun.",
-                            "url": "total",
-                            "pre": true,
-                            "res": {
-                                "desc": "A list of statistics.",
-                                "format": "[scores, hits, comments, stows, parts, articles, articles_passed, articles_alive, articles_no_comment, pass_rate, alive_rate]"
-                            }
-                        },
-                        "Channel": {
-                            "ord": 2,
-                            "desc": "Gets the total statistics for each AcFun Channels.",
-                            "url": "channel?channel={channelID}",
-                            "pre": true,
-                            "param": {
-                                "channelID": {
-                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
-                                    "prec": "Unlike other `channelID`, this one cannot be `null`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of statistics.",
-                                "format": "[scores, hits, comments, stows, parts, articles, articles_no_comment]"
-                            }
-                        },
-                        "Sofa": {
-                            "ord": 3,
-                            "desc": "Gets the number of first-comment in articles of a specified user.",
-                            "url": "sofa?uid={userID}",
-                            "param": {
-                                "userID": {
-                                    "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted users.",
-                                "format": "[user, user, ...]\n[tba] // Each User."
-                            }
-                        }
-                    }
-                },
-                "Graph": {
-                    "ord": 4,
-                    "desc": "The graphic APIs that provide statistical data for AcFun.",
-                    "url": "graph/",
-                    "list": {
-                        "Channel": {
-                            "ord": 1,
-                            "desc": "Gets the graph of `stat versus day` of all articles / a specified channel.",
-                            "url": "channel?channel={channelID}&from={fromDay}&to={toDay}",
-                            "param": {
-                                "channelID": {
-                                    "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on channels. All channels' article will be taken into consideration.",
-                                        "other IDs": "Limit article range in specified channel."
-                                    }
-                                },
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of daily statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts, articles] // Each Day."
-                            }
-                        },
-                        "Article": {
-                            "ord": 2,
-                            "desc": "Gets the graph of `stat versus day` of a specified article.",
-                            "url": "article?aid={articleID}&from={fromDay}&to={toDay}",
-                            "param": {
-                                "articleID": {
-                                    "desc": "The article ID, which could be found in `www.acfun.tv/v/ac{articleID}`.",
-                                    "type": "int"
-                                },
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of daily statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts] // Each Day."
-                            }
-                        },
-                        "Uploader": {
-                            "ord": 3,
-                            "desc": "Gets the graph of `stat versus day` of a specified uploader.",
-                            "url": "article?uid={userID}&from={fromDay}&to={toDay}",
-                            "param": {
-                                "userID": {
-                                    "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
-                                    "type": "int"
-                                },
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of daily statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts, articles] // Each Day."
-                            }
-                        }
-                    }
+  "desc": "In this page you will see the description for Trend API.",
+  "preface": "# Preface\n## Document\nIn this document, you will find an `URL` and an `ORD` for each API layer.\n### URL\n`URL` is the current API's url. By default, you should use `GET` method to call the API.\n### ORD\n`ORD` represents **order**. It:\n* Gives the index of the current API.  \n* Suggests a recommended form of representing the current API.\n\n## Response\nCurrently, we only respond your request in forms of JSON. Please notice that there are three possible situations that our API may respond:\n### Success\nIf `success` is `true`, `content` will be the desired response.  \n``` json\n{\"success\": true, \"content\": {...}}\n```\n### In Query\nIf `success` is `false` AND `query` in `content` is `true`, `status` will be the status of current request.<br>\nIf this occurs, please retry your request every few seconds.  \n``` json\n{\"success\": false, \"content\": {\"query\": true, \"status\": {...}}}\n```\n### Failed\nIf `success` is `false` AND `query` in `content` is `false`, `reason` will be the explanation for failure.  \n``` json\n{\"success\": false, \"content\": {\"query\": false, \"reason\": {...}}}\n```\n\n## TimeStamp\nIn order to fix AJAX bugs for Internet Explorer, you should better add a timestamp parameter (e.g. `ts`).",
+  "url": "http://trend.acfun.tv/api/",
+  "list": {
+    "www": {
+      "ord": 1,
+      "desc": "In this section, you will see the APIs related to the main site.",
+      "url": "www/",
+      "list": {
+        "Assistant": {
+          "ord": 1,
+          "desc": "The assistant APIs which are usually used in calling other APIs.",
+          "url": "assistant/",
+          "list": {
+            "Channel List": {
+              "ord": 1,
+              "desc": "Gets the channel list.",
+              "pre": true,
+              "url": "channel_list?kv={kvContent}",
+              "param": {
+                "kvContent": {
+                  "desc": "Define the content of key and value.",
+                  "type": "int",
+                  "list": {
+                    "0": "key is channelID and value is channelName",
+                    "1": "key is channelName and value is channelID",
+                    "": "key is channelID and value is channelName"
+                  }
                 }
+              },
+              "res": {
+                "desc": "A list of dictionaries with specified key-value.",
+                "format": "[{key: value}, ...]"
+              },
+              "example": [
+                {
+                  "req": {},
+                  "res": {
+                    "content": "tba"
+                  }
+                },
+                {
+                  "req": {
+                    "desc": "The reverse-order request.",
+                    "param": {
+                      "kvContent": 2
+                    }
+                  },
+                  "res": {
+                    "content": "tba"
+                  }
+                }
+              ]
             }
+          }
         },
-        "h": {
-            "ord": 2,
-            "desc": "In this section, you will see the APIs related to the AcFun BBS.",
-            "url": "h/",
-            "list": {
-                "Assistant": {
-                    "ord": 1,
-                    "desc": "The assistant APIs which are usually used in calling other APIs.",
-                    "url": "assistant/",
-                    "list": {
-                        "Forum List": {
-                            "ord": 1,
-                            "desc": "Gets the forum list.",
-                            "pre": true,
-                            "url": "forum_list?kv={kvContent}",
-                            "param": {
-                                "kvContent": {
-                                    "desc": "Define the content of key and value.",
-                                    "type": "int",
-                                    "list": {
-                                        "0": "key is forumID and value is forumName",
-                                        "1": "key is forumName and value is forumID",
-                                        "": "key is forumID and value is forumName"
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of dictionaries with specified key-value.",
-                                "format": "[{key: value}, ...]"
-                            }
-                        },
-                        "Monkey Footprint": {
-                            "ord": 2,
-                            "desc": "Gets the forum list.",
-                            "pre": true,
-                            "url": "monkey_footprint?threadOnly={threadOnly}",
-                            "param": {
-                                "threadOnly": {
-                                    "desc": "Determine whether only the threads are shown.",
-                                    "type": "boolean",
-                                    "list": {
-                                        "true": "only threads are shown",
-                                        "false": "both threads and replies are shown",
-                                        "": "both threads and replies are shown"
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of dictionaries with specified key-value.",
-                                "format": "[{key: value}, ...]"
-                            }
-                        }
-                    }
+        "Rank": {
+          "ord": 2,
+          "desc": "The rank APIs that provide various types of rankings.",
+          "url": "rank/",
+          "list": {
+            "Articles": {
+              "ord": 1,
+              "desc": "Gets the top 100 articles.",
+              "pre": true,
+              "url": "articles?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}&rev={reverse}",
+              "param": {
+                "channelID": {
+                  "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on channels. All channels' article will be taken into consideration.",
+                    "other IDs": "Limit article range in specified channel."
+                  }
                 },
-                "Rank": {
-                    "ord": 2,
-                    "desc": "The rank APIs that provide various types of rankings.",
-                    "url": "rank/",
-                    "list": {
-                        "Thread": {
-                            "ord": 1,
-                            "desc": "Gets the top 100 threads.",
-                            "pre": true,
-                            "url": "thread?forum={forumID}&from={fromTS}&to={toTS}&sort={sortMethod}&sage={includeSage}",
-                            "param": {
-                                "forumID": {
-                                    "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on forum. All forums' article will be taken into consideration.",
-                                        "other IDs": "Limit range in specified forum."
-                                    }
-                                },
-                                "fromTS": {
-                                    "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be smaller than `toTS`.",
-                                    "type": "int"
-                                },
-                                "toTS": {
-                                    "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
-                                    "prec": "It has to be larger than `fromTS`.",
-                                    "type": "int"
-                                },
-                                "sortMethod": {
-                                    "desc": "Sort method.",
-                                    "type": "string",
-                                    "list": {
-                                        "comment": "Sort by number of comments.",
-                                        "length": "Sort by the length of the content, including itself and its replies.",
-                                        "pic": "Sort by the number of pictures, including itself and its replies."
-                                    }
-                                },
-                                "includeSage": {
-                                    "desc": "Determines whether the SAGEed thread is included.",
-                                    "type": "boolean",
-                                    "list": {
-                                        "": "The SAGEed thread is excluded.",
-                                        "false": "The SAGEed thread is excluded.",
-                                        "true": "The SAGEed thread is included"
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of sorted threads.",
-                                "format": "[thread, thread, ...]\n[tba] // Each Thread."
-                            }
-                        }
-                    }
+                "fromTS": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be smaller than `toTS`.",
+                  "type": "int"
                 },
-                "Stat": {
-                    "ord": 3,
-                    "desc": "The statistic APIs that provide statistical data for ACFUN BBS.",
-                    "url": "stat/",
-                    "list": {
-                        "Post": {
-                            "ord": 1,
-                            "desc": "Gets the total posts of the whole BBS / specified forum.",
-                            "url": "post?forum={forumID}",
-                            "param": {
-                                "forumID": {
-                                    "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on forum. All forums' article will be taken into consideration.",
-                                        "other IDs": "Limit range in specified forum."
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of statistics.",
-                                "format": "[tba]"
-                            }
-                        },
-                        "Sage": {
-                            "ord": 2,
-                            "desc": "Gets the sage information of the whole BBS / specified forum.",
-                            "url": "sage?forum={forumID}",
-                            "param": {
-                                "forumID": {
-                                    "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on forum. All forums' article will be taken into consideration.",
-                                        "other IDs": "Limit range in specified forum."
-                                    }
-                                }
-                            },
-                            "res": {
-                                "desc": "A list of statistics.",
-                                "format": "[tba]"
-                            }
-                        }
-                    }
+                "toTS": {
+                  "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be larger than `fromTS`.",
+                  "type": "int"
                 },
-                "Graph": {
-                    "ord": 4,
-                    "desc": "The graphic APIs that provide statistical data for ACFUN BBS.",
-                    "url": "graph/",
-                    "list": {
-                        "Post": {
-                            "ord": 1,
-                            "desc": "Gets the post versus time graph of the whole BBS / specified forum.",
-                            "url": "post?forum={forumID}&from={fromDay}&to={toDay}",
-                            "param": {
-                                "forumID": {
-                                    "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on forum. All forums' article will be taken into consideration.",
-                                        "other IDs": "Limit range in specified forum."
-                                    }
-                                },
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
-                            }
-                        },
-                        "Sage": {
-                            "ord": 2,
-                            "desc": "Gets the sage versus time graph of the whole BBS / specified forum.",
-                            "url": "sage?forum={forumID}&from={fromDay}&to={toDay}",
-                            "param": {
-                                "forumID": {
-                                    "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
-                                    "type": "int",
-                                    "list": {
-                                        "": "No limit on forum. All forums' article will be taken into consideration.",
-                                        "other IDs": "Limit range in specified forum."
-                                    }
-                                },
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
-                            }
-                        }
-                    }
+                "sortMethod": {
+                  "desc": "Sort method.",
+                  "type": "string",
+                  "list": {
+                    "score": "Sort by score.",
+                    "hit": "Sort by number of hits.",
+                    "comment": "Sort by number of comments.",
+                    "stow": "Sort by number of stows. (Stow means Favorite in this case.)",
+                    "part": "Sort by number of parts.",
+                    "last": "Sort by the datetime of the last reply."
+                  }
+                },
+                "rev": {
+                  "desc": "Reverse the rank order. If it is `true`, the API will send back the most **unpopular** articles.",
+                  "type": "boolean",
+                  "list": {
+                    "": "The most popular articles.",
+                    "true": "The most unpopular articles.",
+                    "false": "The most popular articles."
+                  }
                 }
+              },
+              "res": {
+                "desc": "A list of sorted articles.",
+                "format": "[article, article, ...]\n[aid, title, description, userId, userName, userAvatar, userRank, sortTime, sortTimeCount, contTime, contAcDay, contAcWeek, img, contentImg, score, hits, dayViews, weekViews, monthViews, comments, stows, parts, [tag, tag, ...], channelId, channelName, isOriginal] // Each Article. sortTime = lastModifiedTime. img = thumb\n[tagId, tagName, tagScore] // Each tag."
+              }
+            },
+            "Uploaders": {
+              "ord": 2,
+              "desc": "Gets the top 100 uploaders according to the uploader's specified articles.",
+              "pre": true,
+              "url": "uploaders?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
+              "param": {
+                "channelID": {
+                  "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on channels. All channels' article will be taken into consideration.",
+                    "other IDs": "Limit article range in specified channel."
+                  }
+                },
+                "fromTS": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be smaller than `toTS`.",
+                  "type": "int"
+                },
+                "toTS": {
+                  "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be larger than `fromTS`.",
+                  "type": "int"
+                },
+                "sortMethod": {
+                  "desc": "Sort method.",
+                  "type": "string",
+                  "list": {
+                    "score": "Sort by the total score.",
+                    "hit": "Sort by the total number of hits.",
+                    "comment": "Sort by the total number of comments.",
+                    "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
+                    "part": "Sort by the total number of parts.",
+                    "articles": "Sort by number of uploader's articles."
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of sorted uploaders.",
+                "format": "[uploader, uploader, ...]\n[tba] // Each Uploader."
+              }
+            },
+            "Tags": {
+              "ord": 3,
+              "desc": "Gets the top 200 tags according to the tag's specified articles.",
+              "pre": true,
+              "url": "tags?channel={channelID}&from={fromTS}&to={toTS}&sort={sortMethod}",
+              "param": {
+                "channelID": {
+                  "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on channels. All channels' article will be taken into consideration.",
+                    "other IDs": "Limit article range in specified channel."
+                  }
+                },
+                "fromTS": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be smaller than `toTS`.",
+                  "type": "int"
+                },
+                "toTS": {
+                  "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be larger than `fromTS`.",
+                  "type": "int"
+                },
+                "sortMethod": {
+                  "desc": "Sort method.",
+                  "type": "string",
+                  "list": {
+                    "score": "Sort by the total score.",
+                    "hit": "Sort by the total number of hits.",
+                    "comment": "Sort by the total number of comments.",
+                    "stow": "Sort by the total number of stows. (Stow means Favorite in this case.)",
+                    "part": "Sort by the total number of parts.",
+                    "articles": "Sort by number of uploader's articles."
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of sorted tags.",
+                "format": "[tag, tag, ...]\n[tba] // Each Tag."
+              }
+            },
+            "Sofa": {
+              "ord": 4,
+              "desc": "Gets the top 1000 user who have the most first-comment in articles.",
+              "pre": true,
+              "url": "sofa?from={fromRank}&to={toRank}",
+              "param": {
+                "fromRank": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be smaller than `toRank`. Also, `1 <= fromRank <= 1000`.",
+                  "type": "int"
+                },
+                "toRank": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be larger than `fromRank`. Also, `1 <= toRank <= 1000`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A list of sorted users.",
+                "format": "[user, user, ...]\n[tba] // Each User."
+              }
             }
+          }
         },
-        "wiki": {
-            "ord": 3,
-            "desc": "In this section, you will see the APIs related to the AcFun WIKI.",
-            "url": "wiki/",
-            "list": {
-                "Rank": {
-                    "ord": 1,
-                    "desc": "The rank APIs that provide various types of rankings.",
-                    "url": "rank/",
-                    "list": {
-                        "Contribute": {
-                            "ord": 1,
-                            "desc": "Gets the top 200 users.",
-                            "url": "contribute",
-                            "res": {
-                                "desc": "A list of sorted users.",
-                                "format": "[user, user, ...]\n[tba] // Each User."
-                            }
-                        }
-                    }
-                },
-                "Stat": {
-                    "ord": 2,
-                    "desc": "The statistic APIs that provide statistical data for ACFUN WIKI.",
-                    "url": "stat/",
-                    "list": {
-                        "Edit": {
-                            "ord": 1,
-                            "desc": "Gets the total edit information of the whole WIKI.",
-                            "url": "edit",
-                            "res": {
-                                "desc": "A list of statistics.",
-                                "format": "[tba]"
-                            }
-                        }
-                    }
-                },
-                "Graph": {
-                    "ord": 3,
-                    "desc": "The graphic APIs that provide statistical data for ACFUN BBS.",
-                    "url": "graph/",
-                    "list": {
-                        "Edit": {
-                            "ord": 1,
-                            "desc": "Gets the edit versus time graph of the whole BBS / specified forum.",
-                            "url": "post?from={fromDay}&to={toDay}",
-                            "param": {
-                                "fromDay": {
-                                    "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                },
-                                "toDay": {
-                                    "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
-                                    "prec": "`1 <= fromDay <= toDay`.",
-                                    "type": "int"
-                                }
-                            },
-                            "res": {
-                                "desc": "A dictionary of statistics.",
-                                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
-                            }
-                        }
-                    }
+        "Stat": {
+          "ord": 3,
+          "desc": "The statistic APIs that provide statistical data for AcFun.",
+          "url": "stat/",
+          "list": {
+            "Total": {
+              "ord": 1,
+              "desc": "Gets the total statistics for AcFun.",
+              "url": "total",
+              "pre": true,
+              "res": {
+                "desc": "A list of statistics.",
+                "format": "[scores, hits, comments, stows, parts, articles, articles_passed, articles_alive, articles_no_comment, pass_rate, alive_rate]"
+              }
+            },
+            "Channel": {
+              "ord": 2,
+              "desc": "Gets the total statistics for each AcFun Channels.",
+              "url": "channel?channel={channelID}",
+              "pre": true,
+              "param": {
+                "channelID": {
+                  "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                  "prec": "Unlike other `channelID`, this one cannot be `null`.",
+                  "type": "int"
                 }
+              },
+              "res": {
+                "desc": "A list of statistics.",
+                "format": "[scores, hits, comments, stows, parts, articles, articles_no_comment]"
+              }
+            },
+            "Sofa": {
+              "ord": 3,
+              "desc": "Gets the number of first-comment in articles of a specified user.",
+              "url": "sofa?uid={userID}",
+              "param": {
+                "userID": {
+                  "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A list of sorted users.",
+                "format": "[user, user, ...]\n[tba] // Each User."
+              }
             }
+          }
+        },
+        "Graph": {
+          "ord": 4,
+          "desc": "The graphic APIs that provide statistical data for AcFun.",
+          "url": "graph/",
+          "list": {
+            "Channel": {
+              "ord": 1,
+              "desc": "Gets the graph of `stat versus day` of all articles / a specified channel.",
+              "url": "channel?channel={channelID}&from={fromDay}&to={toDay}",
+              "param": {
+                "channelID": {
+                  "desc": "Channel ID that articles belong to, whose list could be found via `assistant/channel_list`",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on channels. All channels' article will be taken into consideration.",
+                    "other IDs": "Limit article range in specified channel."
+                  }
+                },
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of daily statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts, articles] // Each Day."
+              }
+            },
+            "Article": {
+              "ord": 2,
+              "desc": "Gets the graph of `stat versus day` of a specified article.",
+              "url": "article?aid={articleID}&from={fromDay}&to={toDay}",
+              "param": {
+                "articleID": {
+                  "desc": "The article ID, which could be found in `www.acfun.tv/v/ac{articleID}`.",
+                  "type": "int"
+                },
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of daily statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts] // Each Day."
+              }
+            },
+            "Uploader": {
+              "ord": 3,
+              "desc": "Gets the graph of `stat versus day` of a specified uploader.",
+              "url": "article?uid={userID}&from={fromDay}&to={toDay}",
+              "param": {
+                "userID": {
+                  "desc": "The user ID, which could be found in `www.acfun.tv/u/{userID}.aspx`.",
+                  "type": "int"
+                },
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of daily statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[scores, hits, comments, stows, parts, articles] // Each Day."
+              }
+            }
+          }
         }
+      }
+    },
+    "h": {
+      "ord": 2,
+      "desc": "In this section, you will see the APIs related to the AcFun BBS.",
+      "url": "h/",
+      "list": {
+        "Assistant": {
+          "ord": 1,
+          "desc": "The assistant APIs which are usually used in calling other APIs.",
+          "url": "assistant/",
+          "list": {
+            "Forum List": {
+              "ord": 1,
+              "desc": "Gets the forum list.",
+              "pre": true,
+              "url": "forum_list?kv={kvContent}",
+              "param": {
+                "kvContent": {
+                  "desc": "Define the content of key and value.",
+                  "type": "int",
+                  "list": {
+                    "0": "key is forumID and value is forumName",
+                    "1": "key is forumName and value is forumID",
+                    "": "key is forumID and value is forumName"
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of dictionaries with specified key-value.",
+                "format": "[{key: value}, ...]"
+              }
+            },
+            "Monkey Footprint": {
+              "ord": 2,
+              "desc": "Gets the forum list.",
+              "pre": true,
+              "url": "monkey_footprint?threadOnly={threadOnly}",
+              "param": {
+                "threadOnly": {
+                  "desc": "Determine whether only the threads are shown.",
+                  "type": "boolean",
+                  "list": {
+                    "true": "only threads are shown",
+                    "false": "both threads and replies are shown",
+                    "": "both threads and replies are shown"
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of dictionaries with specified key-value.",
+                "format": "[{key: value}, ...]"
+              }
+            }
+          }
+        },
+        "Rank": {
+          "ord": 2,
+          "desc": "The rank APIs that provide various types of rankings.",
+          "url": "rank/",
+          "list": {
+            "Thread": {
+              "ord": 1,
+              "desc": "Gets the top 100 threads.",
+              "pre": true,
+              "url": "thread?forum={forumID}&from={fromTS}&to={toTS}&sort={sortMethod}&sage={includeSage}",
+              "param": {
+                "forumID": {
+                  "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on forum. All forums' article will be taken into consideration.",
+                    "other IDs": "Limit range in specified forum."
+                  }
+                },
+                "fromTS": {
+                  "desc": "Describes the lower bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be smaller than `toTS`.",
+                  "type": "int"
+                },
+                "toTS": {
+                  "desc": "Describes the upper bound of time range in terms of TimeStamp. The unit is seconds, NOT milliseconds.",
+                  "prec": "It has to be larger than `fromTS`.",
+                  "type": "int"
+                },
+                "sortMethod": {
+                  "desc": "Sort method.",
+                  "type": "string",
+                  "list": {
+                    "comment": "Sort by number of comments.",
+                    "length": "Sort by the length of the content, including itself and its replies.",
+                    "pic": "Sort by the number of pictures, including itself and its replies."
+                  }
+                },
+                "includeSage": {
+                  "desc": "Determines whether the SAGEed thread is included.",
+                  "type": "boolean",
+                  "list": {
+                    "": "The SAGEed thread is excluded.",
+                    "false": "The SAGEed thread is excluded.",
+                    "true": "The SAGEed thread is included"
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of sorted threads.",
+                "format": "[thread, thread, ...]\n[tba] // Each Thread."
+              }
+            }
+          }
+        },
+        "Stat": {
+          "ord": 3,
+          "desc": "The statistic APIs that provide statistical data for ACFUN BBS.",
+          "url": "stat/",
+          "list": {
+            "Post": {
+              "ord": 1,
+              "desc": "Gets the total posts of the whole BBS / specified forum.",
+              "url": "post?forum={forumID}",
+              "param": {
+                "forumID": {
+                  "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on forum. All forums' article will be taken into consideration.",
+                    "other IDs": "Limit range in specified forum."
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of statistics.",
+                "format": "[tba]"
+              }
+            },
+            "Sage": {
+              "ord": 2,
+              "desc": "Gets the sage information of the whole BBS / specified forum.",
+              "url": "sage?forum={forumID}",
+              "param": {
+                "forumID": {
+                  "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on forum. All forums' article will be taken into consideration.",
+                    "other IDs": "Limit range in specified forum."
+                  }
+                }
+              },
+              "res": {
+                "desc": "A list of statistics.",
+                "format": "[tba]"
+              }
+            }
+          }
+        },
+        "Graph": {
+          "ord": 4,
+          "desc": "The graphic APIs that provide statistical data for ACFUN BBS.",
+          "url": "graph/",
+          "list": {
+            "Post": {
+              "ord": 1,
+              "desc": "Gets the post versus time graph of the whole BBS / specified forum.",
+              "url": "post?forum={forumID}&from={fromDay}&to={toDay}",
+              "param": {
+                "forumID": {
+                  "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on forum. All forums' article will be taken into consideration.",
+                    "other IDs": "Limit range in specified forum."
+                  }
+                },
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
+              }
+            },
+            "Sage": {
+              "ord": 2,
+              "desc": "Gets the sage versus time graph of the whole BBS / specified forum.",
+              "url": "sage?forum={forumID}&from={fromDay}&to={toDay}",
+              "param": {
+                "forumID": {
+                  "desc": "The forum ID that represents the corresponding forum which could be found via `assistant/forum_list`.",
+                  "type": "int",
+                  "list": {
+                    "": "No limit on forum. All forums' article will be taken into consideration.",
+                    "other IDs": "Limit range in specified forum."
+                  }
+                },
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
+              }
+            }
+          }
+        }
+      }
+    },
+    "wiki": {
+      "ord": 3,
+      "desc": "In this section, you will see the APIs related to the AcFun WIKI.",
+      "url": "wiki/",
+      "list": {
+        "Rank": {
+          "ord": 1,
+          "desc": "The rank APIs that provide various types of rankings.",
+          "url": "rank/",
+          "list": {
+            "Contribute": {
+              "ord": 1,
+              "desc": "Gets the top 200 users.",
+              "url": "contribute",
+              "res": {
+                "desc": "A list of sorted users.",
+                "format": "[user, user, ...]\n[tba] // Each User."
+              }
+            }
+          }
+        },
+        "Stat": {
+          "ord": 2,
+          "desc": "The statistic APIs that provide statistical data for ACFUN WIKI.",
+          "url": "stat/",
+          "list": {
+            "Edit": {
+              "ord": 1,
+              "desc": "Gets the total edit information of the whole WIKI.",
+              "url": "edit",
+              "res": {
+                "desc": "A list of statistics.",
+                "format": "[tba]"
+              }
+            }
+          }
+        },
+        "Graph": {
+          "ord": 3,
+          "desc": "The graphic APIs that provide statistical data for ACFUN BBS.",
+          "url": "graph/",
+          "list": {
+            "Edit": {
+              "ord": 1,
+              "desc": "Gets the edit versus time graph of the whole BBS / specified forum.",
+              "url": "post?from={fromDay}&to={toDay}",
+              "param": {
+                "fromDay": {
+                  "desc": "The lower bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                },
+                "toDay": {
+                  "desc": "The upper bound of day range. `2007-06-04` is `Day 1`.",
+                  "prec": "`1 <= fromDay <= toDay`.",
+                  "type": "int"
+                }
+              },
+              "res": {
+                "desc": "A dictionary of statistics.",
+                "format": "{dayNum: day, dayNum: day, ...}\n[tba] // Each day."
+              }
+            }
+          }
+        }
+      }
     }
+  }
 }

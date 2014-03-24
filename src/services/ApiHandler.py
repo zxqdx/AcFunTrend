@@ -22,6 +22,25 @@ from miscellaneous import gadget
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+class ApiFetchError(Exception):
+    def __init__(self, msg=None):
+        self.msg = "获取数据时出现异常"
+        if msg: self.msg += "：" + msg
+
+    def __str__(self):
+        return repr(self.msg)
+
+class ParamOptions():
+    REQUIRED = 1
+    OPTIONAL = 2
+    STR = 0
+    INT = 1
+    FLOAT = 2
+    BOOLEAN = 3
+    def __init__(self, opt, type, arg=None):
+        self.opt = opt
+        self.type = type
+        self.arg = arg
 
 class ApiHandler(threading.Thread):
     """
@@ -116,10 +135,21 @@ class ApiPoolHandler(threading.Thread):
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlApiDB), "SEVERE", ex=e)
             raise e
+        self.expectedParam = {
+            "1_1_1": {},
+            "1_2_1": {
+                "channel": ParamOptions(ParamOptions.OPTIONAL, ParamOptions.INT),
+                "from": ParamOptions(ParamOptions.REQUIRED, ParamOptions.INT),
+                "to": ParamOptions(ParamOptions.REQUIRED, ParamOptions.INT),
+                "sort": ParamOptions(ParamOptions.REQUIRED, ParamOptions.STR),
+                "rev": ParamOptions(ParamOptions.OPTIONAL, ParamOptions.BOOLEAN, False)
+            }
+        }
 
     def escape_string(self, s):
         return self.conn.escape_string(s)
 
+    @staticmethod
     def generate_result(self, success, content):
         if success:
             return {"success": True, "content": content}
@@ -147,19 +177,106 @@ class ApiPoolHandler(threading.Thread):
                             break
                     if isFound: break
                 if isFound:
-                    # Fetch the result of query.
-                    self.logger.add("Fetching the result for {}".format(currentQuery), "DEBUG")
-                    eachQueryOrder, eachQueryParam = eachQuery.split("?")
-                    if eachQueryOrder == "1_1_1":
-                        pass
-                    elif eachQueryOrder == "1_2_1":
-                        # TODO MARK.
+                    try:
+                        # Fetch the result of query.
+                        self.logger.add("Fetching the result for {}".format(currentQuery), "DEBUG")
+                        eachQueryOrder, eachQueryParamStr = eachQuery.split("?")
+                        # Check query order.
+                        if eachQueryOrder not in self.expectedParam:
+                            raise ApiFetchError("不支持的order({})".format(eachQueryOrder))
+                        # Parse parameters.
+                        eachQueryParamList = eachQueryParamStr.split("&")
+                        eachQueryParamDict = {}
+                        for eachQueryParam in eachQueryParamList:
+                            eachQueryParamName, eachQueryParamValue = eachQueryParam.split("=")
+                            eachQueryParamDict[eachQueryParamName] = eachQueryParamValue
+                        # Check missing parameters.
+                        eachParamExpectedList = self.expectedParam[eachQueryOrder]
+                        for eachParamExpected in eachParamExpectedList:
+                            eachParamOption = eachParamExpectedList[eachParamExpected]
+                            if eachParamOption.opt==ParamOptions.REQUIRED:
+                                if eachParamExpected not in eachQueryParamDict:
+                                    raise ApiFetchError("未指定参数{}".format(eachParamExpected))
+                                if eachParamOption.type==ParamOptions.INT:
+                                    try:
+                                        eachQueryParamDict[eachParamExpected] = \
+                                            int(eachQueryParamDict[eachParamExpected])
+                                    except:
+                                        raise ApiFetchError("{}的值不是int类型".format(eachParamExpected))
+                                elif eachParamOption.type==ParamOptions.FLOAT:
+                                    try:
+                                        eachQueryParamDict[eachParamExpected] = \
+                                            float(eachQueryParamDict[eachParamExpected])
+                                    except:
+                                        raise ApiFetchError("{}的值不是float类型".format(eachParamExpected))
+                                elif eachParamOption.type==ParamOptions.BOOLEAN:
+                                    if eachQueryParamDict[eachParamExpected].lower() == "false":
+                                        eachQueryParamDict[eachParamExpected] = False
+                                    elif eachQueryParamDict[eachParamExpected].lower() == "true":
+                                        eachQueryParamDict[eachParamExpected] = True
+                                    else:
+                                        raise ApiFetchError("{}的值不是boolean类型".format(eachParamExpected))
+                            elif eachParamOption.opt==ParamOptions.OPTIONAL:
+                                if eachParamExpected not in eachQueryParamDict:
+                                    eachQueryParamDict[eachParamExpected] = eachParamOption.arg
+                        if eachQueryOrder == "1_1_1":
+                            pass
+                        elif eachQueryOrder == "1_2_1":
+                            # // Each Article. sortTime = lastModifiedTime. img = thumb
+                            # [aid, title, description, userId, userName, userAvatar, userRank,
+                            # sortTime, sortTimeCount, contTime, contAcDay, contAcWeek, img, contentImg,
+                            # score, hits, dayViews, weekViews, monthViews, comments, stows, parts,
+                            # [tag, tag, ...], channelName, channelId, isOriginal]
+                            # // Each tag.
+                            # [tagId, tagName, tagScore]
 
-                        pass
-                    else:
-                        resultJson = self.generate_result(False, "无法识别请求类型。")
-                        self.logger.add("Unrecognized query order {}.".format(eachQueryOrder), "WARNING")
+                            # >> Check fromTS <= toTs.
+                            if eachQueryParamDict["from"] > eachQueryParamDict["to"]:
+                                raise ApiFetchError("from的值大于to")
+                            # >> SQL manipulation.
+                            sql = 'SELECT id, title, description, user_id, user_name, sort_time, sort_time_count, ' \
+                                  'contribute_time, contribute_time_ac_day, contribute_time_week, img, content_img, ' \
+                                  'score_trend, hits, day_views, week_views, month_views, comments, stows, parts, ' \
+                                  'tags, channel_id, channel_name, type_id ' \
+                                  'FROM ac_articles WHERE survive=2'
+                            if eachQueryParamDict["channel"]:
+                                sql += ' AND channel_id={}'.format(eachQueryParamDict["channel"])
+                            sql += ' AND contribute_time>={} AND contribute_time<={}'.format(
+                                eachQueryParamDict["from"], eachQueryParamDict["to"])
+                            sql += ' ORDER BY '
+                            if eachQueryParamDict["sort"]=="hit":
+                                sql += 'hits'
+                            elif eachQueryParamDict["sort"]=="comment":
+                                sql += 'comments'
+                            elif eachQueryParamDict["sort"]=="stow":
+                                sql += 'stows'
+                            elif eachQueryParamDict["sort"]=="part":
+                                sql += 'parts'
+                            elif eachQueryParamDict["sort"]=="score":
+                                sql += 'score_trend'
+                            elif eachQueryParamDict["sort"]=="last":
+                                sql += 'last_feedback_time'
+                            else:
+                                raise ApiFetchError("未知的排序方法{}".format(eachQueryParamDict["sort"]))
+                            if eachQueryParamDict["rev"]:
+                                sql += ' DESC'
+                            self.cursor.execute(sql)
+                            articleList = []
+                            if self.cursor.rowcount > 0:
+                                # TODO MARK.
+                                # Test git.....
+                                pass
 
+                            resultJson = self.generate_result(True, articleList)
+                        else:
+                            resultJson = self.generate_result(False, "无法识别请求类型。")
+                            self.logger.add("Unrecognized query order {}.".format(eachQueryOrder), "WARNING")
+                    except ApiFetchError as e:
+                        resultJson = self.generate_result(False, e)
+                        self.logger.add("Expected error occurred.", ex=e)
+                    except Exception as e:
+                        resultJson = self.generate_result(False, "获取数据时出现未知错误。")
+                        self.logger.add("Unknown error occurred.", "SEVERE", ex=e)
                     # Store the result into cache.
                     self.logger.add("Storing the result into cache.")
                     self.cursor.execute('SELECT query FROM trend_api_cache '
