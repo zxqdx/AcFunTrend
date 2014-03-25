@@ -22,6 +22,7 @@ from miscellaneous import gadget
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 class ApiFetchError(Exception):
     def __init__(self, msg=None):
         self.msg = "获取数据时出现异常"
@@ -30,6 +31,7 @@ class ApiFetchError(Exception):
     def __str__(self):
         return repr(self.msg)
 
+
 class ParamOptions():
     REQUIRED = 1
     OPTIONAL = 2
@@ -37,10 +39,12 @@ class ParamOptions():
     INT = 1
     FLOAT = 2
     BOOLEAN = 3
+
     def __init__(self, opt, type, arg=None):
         self.opt = opt
         self.type = type
         self.arg = arg
+
 
 class ApiHandler(threading.Thread):
     """
@@ -194,41 +198,43 @@ class ApiPoolHandler(threading.Thread):
                         eachParamExpectedList = self.expectedParam[eachQueryOrder]
                         for eachParamExpected in eachParamExpectedList:
                             eachParamOption = eachParamExpectedList[eachParamExpected]
-                            if eachParamOption.opt==ParamOptions.REQUIRED:
+                            if eachParamOption.opt == ParamOptions.REQUIRED:
                                 if eachParamExpected not in eachQueryParamDict:
                                     raise ApiFetchError("未指定参数{}".format(eachParamExpected))
-                                if eachParamOption.type==ParamOptions.INT:
+                                if eachParamOption.type == ParamOptions.INT:
                                     try:
                                         eachQueryParamDict[eachParamExpected] = \
                                             int(eachQueryParamDict[eachParamExpected])
                                     except:
                                         raise ApiFetchError("{}的值不是int类型".format(eachParamExpected))
-                                elif eachParamOption.type==ParamOptions.FLOAT:
+                                elif eachParamOption.type == ParamOptions.FLOAT:
                                     try:
                                         eachQueryParamDict[eachParamExpected] = \
                                             float(eachQueryParamDict[eachParamExpected])
                                     except:
                                         raise ApiFetchError("{}的值不是float类型".format(eachParamExpected))
-                                elif eachParamOption.type==ParamOptions.BOOLEAN:
+                                elif eachParamOption.type == ParamOptions.BOOLEAN:
                                     if eachQueryParamDict[eachParamExpected].lower() == "false":
                                         eachQueryParamDict[eachParamExpected] = False
                                     elif eachQueryParamDict[eachParamExpected].lower() == "true":
                                         eachQueryParamDict[eachParamExpected] = True
                                     else:
                                         raise ApiFetchError("{}的值不是boolean类型".format(eachParamExpected))
-                            elif eachParamOption.opt==ParamOptions.OPTIONAL:
+                            elif eachParamOption.opt == ParamOptions.OPTIONAL:
                                 if eachParamExpected not in eachQueryParamDict:
                                     eachQueryParamDict[eachParamExpected] = eachParamOption.arg
                         if eachQueryOrder == "1_1_1":
                             pass
                         elif eachQueryOrder == "1_2_1":
                             # // Each Article. sortTime = lastModifiedTime. img = thumb
-                            # [aid, title, description, userId, userName, userAvatar, userRank,
+                            # [aid, title, description, userId, userName, userInfo,
                             # sortTime, sortTimeCount, contTime, contAcDay, contAcWeek, img, contentImg,
                             # score, hits, dayViews, weekViews, monthViews, comments, stows, parts,
                             # [tag, tag, ...], channelName, channelId, isOriginal]
+                            # // userInfo
+                            # [userAvatar, userRank]
                             # // Each tag.
-                            # [tagId, tagName, tagScore]
+                            # [tagId, tagName]
 
                             # >> Check fromTS <= toTs.
                             if eachQueryParamDict["from"] > eachQueryParamDict["to"]:
@@ -244,30 +250,51 @@ class ApiPoolHandler(threading.Thread):
                             sql += ' AND contribute_time>={} AND contribute_time<={}'.format(
                                 eachQueryParamDict["from"], eachQueryParamDict["to"])
                             sql += ' ORDER BY '
-                            if eachQueryParamDict["sort"]=="hit":
+                            if eachQueryParamDict["sort"] == "hit":
                                 sql += 'hits'
-                            elif eachQueryParamDict["sort"]=="comment":
+                            elif eachQueryParamDict["sort"] == "comment":
                                 sql += 'comments'
-                            elif eachQueryParamDict["sort"]=="stow":
+                            elif eachQueryParamDict["sort"] == "stow":
                                 sql += 'stows'
-                            elif eachQueryParamDict["sort"]=="part":
+                            elif eachQueryParamDict["sort"] == "part":
                                 sql += 'parts'
-                            elif eachQueryParamDict["sort"]=="score":
+                            elif eachQueryParamDict["sort"] == "score":
                                 sql += 'score_trend'
-                            elif eachQueryParamDict["sort"]=="last":
+                            elif eachQueryParamDict["sort"] == "last":
                                 sql += 'last_feedback_time'
                             else:
                                 raise ApiFetchError("未知的排序方法{}".format(eachQueryParamDict["sort"]))
                             if eachQueryParamDict["rev"]:
                                 sql += ' DESC'
                             self.cursor.execute(sql)
-                            articleList = []
+                            resultArticleList = []
                             if self.cursor.rowcount > 0:
-                                # TODO MARK.
-                                # Test git.....
-                                pass
-
-                            resultJson = self.generate_result(True, articleList)
+                                fetchedArticleList = self.cursor.fetchall()
+                                for eachArticle in fetchedArticleList:
+                                    eachArticleUserId = eachArticle[3]
+                                    self.cursor.execute('SELECT img, rank FROM ac_users WHERE id={}'.format(
+                                        eachArticleUserId
+                                    ))
+                                    if self.cursor.rowcount > 0:
+                                        eachArticleUserImg, eachArticleUserRank = self.cursor.fetchall()[0]
+                                        if eachArticleUserImg is None:
+                                            eachArticleUserImg = ""
+                                        if eachArticleUserRank is None:
+                                            eachArticleUserRank = -1
+                                    else:
+                                        eachArticleUserImg = ""
+                                        eachArticleUserRank = -1
+                                    eachArticleUserInfo = [eachArticleUserImg, eachArticleUserRank]
+                                    eachArticleIsOriginal = eachArticle[24]==3 or eachArticle[24]==4
+                                    resultArticleList.append([
+                                        eachArticle[0], eachArticle[1], eachArticle[2], eachArticle[3], eachArticle[4],
+                                        eachArticleUserInfo, eachArticle[5], eachArticle[6],
+                                        eachArticle[7], eachArticle[8], eachArticle[9],
+                                        eachArticle[10], eachArticle[11], eachArticle[12], eachArticle[13],
+                                        eachArticle[14], eachArticle[15], eachArticle[16], eachArticle[17],
+                                        eachArticle[18], eachArticle[19], eachArticle[20],
+                                        eachArticle[21], eachArticle[22], eachArticleIsOriginal])
+                            resultJson = self.generate_result(True, resultArticleList)
                         else:
                             resultJson = self.generate_result(False, "无法识别请求类型。")
                             self.logger.add("Unrecognized query order {}.".format(eachQueryOrder), "WARNING")

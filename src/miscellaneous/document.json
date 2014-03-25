@@ -108,7 +108,7 @@
               },
               "res": {
                 "desc": "A list of sorted articles.",
-                "format": "[article, article, ...]\n[aid, title, description, userId, userName, userAvatar, userRank, sortTime, sortTimeCount, contTime, contAcDay, contAcWeek, img, contentImg, score, hits, dayViews, weekViews, monthViews, comments, stows, parts, [tag, tag, ...], channelId, channelName, isOriginal] // Each Article. sortTime = lastModifiedTime. img = thumb\n[tagId, tagName, tagScore] // Each tag."
+                "format": "[article, article, ...]\n[aid, title, description, userId, userName, userInfo, sortTime, sortTimeCount, contTime, contAcDay, contAcWeek, img, contentImg, score, hits, dayViews, weekViews, monthViews, comments, stows, parts, [tag, tag, ...], channelId, channelName, isOriginal] // Each Article. sortTime = lastModifiedTime. img = thumb\n[userAvatar, userRank] // userInfo.\n[tagId, tagName] // Each tag."
               }
             },
             "Uploaders": {
