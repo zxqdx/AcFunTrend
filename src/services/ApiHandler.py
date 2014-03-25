@@ -139,6 +139,13 @@ class ApiPoolHandler(threading.Thread):
             self.logger.add("Failed to connect {} database. Please check the status of MYSQL service.".format(
                 Global.mysqlApiDB), "SEVERE", ex=e)
             raise e
+        self.paramDict = {
+            "a": "channel",
+            "b": "from",
+            "c": "to",
+            "d": "sort",
+            "e": "rev"
+        }
         self.expectedParam = {
             "1_1_1": {},
             "1_2_1": {
@@ -193,6 +200,7 @@ class ApiPoolHandler(threading.Thread):
                         eachQueryParamDict = {}
                         for eachQueryParam in eachQueryParamList:
                             eachQueryParamName, eachQueryParamValue = eachQueryParam.split("=")
+                            eachQueryParamName = self.paramDict[eachQueryParamName]
                             eachQueryParamDict[eachQueryParamName] = eachQueryParamValue
                         # Check missing parameters.
                         eachParamExpectedList = self.expectedParam[eachQueryOrder]
