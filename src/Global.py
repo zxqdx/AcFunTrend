@@ -48,6 +48,7 @@ mysqlApiDB = "trend_api"
 mysqlEncoding = "utf8mb4"
 
 TrendAPIPoolNum = 10
+TrendAPIPoolCycle = 1
 TrendAPIQueryCycle = 2
 TrendAPICacheTimeoutShort = 3600 # 1hr
 TrendAPICacheTimeoutMedium = 28800 # 8hr

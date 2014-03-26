@@ -63,40 +63,40 @@ class ApiHandler(threading.Thread):
             raise e
 
         self.queue = {"paused": False, "feedback": [False for _ in range(Global.TrendAPIPoolNum)]}
-        for k in range(Global.TrendAPIPoolNum):
+        for k in range(1, Global.TrendAPIPoolNum+1):
             self.queue[k] = {}
 
         # Sets up threads.
         self.logger.add("Setting up threads.", "DEBUG")
-        self.apiPoolHandler = ApiPoolHandler(self.queue)
-        self.apiPoolHandler.daemon = True
-        self.apiQueueHandlerDict = {}
-        for k in range(Global.TrendAPIPoolNum):
-            self.apiQueueHandlerDict[k] = ApiQueueHandler(self.queue, k)
-            self.apiQueueHandlerDict[k].daemon = True
+        self.apiQueueHandler = ApiQueueHandler(self.queue)
+        self.apiQueueHandler.daemon = True
+        self.apiPoolHandlerDict = {}
+        for k in range(1, Global.TrendAPIPoolNum+1):
+            self.apiPoolHandlerDict[k] = ApiPoolHandler(self.queue, k)
+            self.apiPoolHandlerDict[k].daemon = True
 
     def run(self):
         # Starts threads.
         self.logger.add("Starting threads...", "DEBUG")
-        self.apiPoolHandler.start()
-        for k in range(Global.TrendAPIPoolNum):
-            self.apiQueueHandlerDict[k].start()
+        self.apiQueueHandler.start()
+        for k in range(1, Global.TrendAPIPoolNum+1):
+            self.apiPoolHandlerDict[k].start()
         while True:
             interrupter = self.serviceLocker.is_interrupt()
             if interrupter:
                 self.logger.add("The service is interrupted by {}.".format(interrupter), "SEVERE")
                 break
 
-            if not self.apiPoolHandler.isAlive():
-                self.logger.add("An error occurs in thread {}. The service is about to quit.".format("apiPoolHandler"),
+            if not self.apiQueueHandler.isAlive():
+                self.logger.add("An error occurs in thread {}. The service is about to quit.".format("ApiQueueHandler"),
                                 "SEVERE")
                 break
 
             isBreak = False
-            for k in range(Global.TrendAPIPoolNum):
-                if not self.apiQueueHandlerDict[k].isAlive():
+            for k in range(1, Global.TrendAPIPoolNum+1):
+                if not self.apiPoolHandlerDict[k].isAlive():
                     self.logger.add("An error occurs in thread {}. "
-                                    "The service is about to quit.".format("ApiQueueHandler" + k), "SEVERE")
+                                    "The service is about to quit.".format("ApiPoolHandler{}".format(k)), "SEVERE")
                     isBreak = True
                     break
             if isBreak: break
@@ -122,7 +122,7 @@ class ApiPoolHandler(threading.Thread):
     """
 
     def __init__(self, queue, poolId):
-        threading.Thread.__init__(self, name="ApiPoolHandler" + poolId)
+        threading.Thread.__init__(self, name="ApiPoolHandler{}".format(poolId))
         self.logger = Logger(self.name)
         self.queue = queue
         self.poolId = poolId
@@ -161,7 +161,7 @@ class ApiPoolHandler(threading.Thread):
         return self.conn.escape_string(s)
 
     @staticmethod
-    def generate_result(self, success, content):
+    def generate_result(success, content):
         if success:
             return {"success": True, "content": content}
         else:
@@ -244,15 +244,19 @@ class ApiPoolHandler(threading.Thread):
                             # // Each tag.
                             # [tagId, tagName]
 
+                            # Set cache timeout.
+                            queryCacheTimeout = Global.TrendAPICacheTimeoutShort
                             # >> Check fromTS <= toTs.
                             if eachQueryParamDict["from"] > eachQueryParamDict["to"]:
                                 raise ApiFetchError("from的值大于to")
+                            eachQueryParamDict["from"] *= 1000
+                            eachQueryParamDict["to"] *= 1000
                             # >> SQL manipulation.
                             sql = 'SELECT id, title, description, user_id, user_name, sort_time, sort_time_count, ' \
                                   'contribute_time, contribute_time_ac_day, contribute_time_week, img, content_img, ' \
                                   'score_trend, hits, day_views, week_views, month_views, comments, stows, parts, ' \
                                   'tags, channel_id, channel_name, type_id ' \
-                                  'FROM ac_articles WHERE survive=2'
+                                  'FROM {}.ac_articles WHERE survive=2'.format(Global.mysqlAcWsConnectorDB)
                             if eachQueryParamDict["channel"]:
                                 sql += ' AND channel_id={}'.format(eachQueryParamDict["channel"])
                             sql += ' AND contribute_time>={} AND contribute_time<={}'.format(
@@ -272,7 +276,7 @@ class ApiPoolHandler(threading.Thread):
                                 sql += 'last_feedback_time'
                             else:
                                 raise ApiFetchError("未知的排序方法{}".format(eachQueryParamDict["sort"]))
-                            if eachQueryParamDict["rev"]:
+                            if not eachQueryParamDict["rev"]:
                                 sql += ' DESC'
                             self.cursor.execute(sql)
                             resultArticleList = []
@@ -280,8 +284,8 @@ class ApiPoolHandler(threading.Thread):
                                 fetchedArticleList = self.cursor.fetchall()
                                 for eachArticle in fetchedArticleList:
                                     eachArticleUserId = eachArticle[3]
-                                    self.cursor.execute('SELECT img, rank FROM ac_users WHERE id={}'.format(
-                                        eachArticleUserId
+                                    self.cursor.execute('SELECT img, rank FROM {}.ac_users WHERE id={}'.format(
+                                        Global.mysqlAcWsConnectorDB, eachArticleUserId
                                     ))
                                     if self.cursor.rowcount > 0:
                                         eachArticleUserImg, eachArticleUserRank = self.cursor.fetchall()[0]
@@ -293,7 +297,7 @@ class ApiPoolHandler(threading.Thread):
                                         eachArticleUserImg = ""
                                         eachArticleUserRank = -1
                                     eachArticleUserInfo = [eachArticleUserImg, eachArticleUserRank]
-                                    eachArticleIsOriginal = eachArticle[24]==3 or eachArticle[24]==4
+                                    eachArticleIsOriginal = eachArticle[23]==3 or eachArticle[23]==4
                                     resultArticleList.append([
                                         eachArticle[0], eachArticle[1], eachArticle[2], eachArticle[3], eachArticle[4],
                                         eachArticleUserInfo, eachArticle[5], eachArticle[6],
@@ -302,15 +306,18 @@ class ApiPoolHandler(threading.Thread):
                                         eachArticle[14], eachArticle[15], eachArticle[16], eachArticle[17],
                                         eachArticle[18], eachArticle[19], eachArticle[20],
                                         eachArticle[21], eachArticle[22], eachArticleIsOriginal])
-                            resultJson = self.generate_result(True, resultArticleList)
+                            resultJson = ApiPoolHandler.generate_result(True, resultArticleList)
                         else:
-                            resultJson = self.generate_result(False, "无法识别请求类型。")
+                            queryCacheTimeout = Global.TrendAPICacheTimeoutMedium
+                            resultJson = ApiPoolHandler.generate_result(False, "无法识别请求类型。")
                             self.logger.add("Unrecognized query order {}.".format(eachQueryOrder), "WARNING")
                     except ApiFetchError as e:
-                        resultJson = self.generate_result(False, e)
+                        queryCacheTimeout = Global.TrendAPICacheTimeoutMedium
+                        resultJson = ApiPoolHandler.generate_result(False, str(e))
                         self.logger.add("Expected error occurred.", ex=e)
                     except Exception as e:
-                        resultJson = self.generate_result(False, "获取数据时出现未知错误。")
+                        queryCacheTimeout = Global.TrendAPICacheTimeoutMedium
+                        resultJson = ApiPoolHandler.generate_result(False, "获取数据时出现未知错误。")
                         self.logger.add("Unknown error occurred.", "SEVERE", ex=e)
                     # Store the result into cache.
                     self.logger.add("Storing the result into cache.")
@@ -318,30 +325,34 @@ class ApiPoolHandler(threading.Thread):
                                         'WHERE query="{}"'.format(self.escape_string(eachQuery)))
                     if self.cursor.rowcount > 0:
                         self.cursor.execute('UPDATE trend_api_cache SET '
-                                            'expire_time={}, result="{}" WHERE '
+                                            'expire_time={}, result=\'{}\' WHERE '
                                             'query="{}"'.format(gadget.datetime_to_timestamp(
-                            datetime.datetime.now() + datetime.timedelta(seconds=eachQueryTimeout)),
+                            datetime.datetime.now() + datetime.timedelta(seconds=queryCacheTimeout)),
                                                                 self.escape_string(json.dumps(resultJson)),
                                                                 self.escape_string(currentQuery)))
+                        self.conn.commit()
                     else:
                         self.cursor.execute('INSERT INTO trend_api_cache(query, expire_time, result) '
                                             'VALUES ("{}", {}, "{}")'.format(self.escape_string(eachQuery),
                                                                              gadget.datetime_to_timestamp(
                                                                                  datetime.datetime.now()
                                                                                  + datetime.timedelta(
-                                                                                     seconds=eachQueryTimeout)),
+                                                                                     seconds=queryCacheTimeout)),
                                                                              self.escape_string(
-                                                                                 json.dumps(resultJson))));
+                                                                                 json.dumps(resultJson))))
+                        self.conn.commit()
                     # Delete query from queue.
                     self.logger.add("Deleting query from queue.")
                     self.cursor.execute('DELETE FROM trend_api_queue '
                                         'WHERE query="{}"'.format(self.escape_string(currentQuery)))
+                    self.conn.commit()
                     # Change the status of query.
                     self.queue[self.poolId][eachPriority][currentQuery]["finished"] = True
             except Exception as e:
                 self.logger.add("Unknown error occurred.", "SEVERE", ex=e)
                 break
-            time.sleep(Global.TrendAPIQueryCycle)
+            if not isFound:
+                time.sleep(Global.TrendAPIPoolCycle)
 
 
 class ApiQueueHandler(threading.Thread):
@@ -376,12 +387,12 @@ class ApiQueueHandler(threading.Thread):
         locked = False
         while not locked:
             locked = True
-            for eachPoolId in range(Global.TrendAPIPoolNum):
+            for eachPoolId in range(1, Global.TrendAPIPoolNum+1):
                 locked = locked and self.queue["feedback"][eachPoolId]
             time.sleep(0.5)
 
     def release_lock(self):
-        for eachPoolId in range(Global.TrendAPIPoolNum):
+        for eachPoolId in range(1, Global.TrendAPIPoolNum+1):
             self.queue["feedback"][eachPoolId] = False
         self.queue["paused"] = False
 
@@ -396,10 +407,11 @@ class ApiQueueHandler(threading.Thread):
                     self.cursor.execute(
                         'DELETE FROM trend_api_cache '
                         'WHERE expire_time>={}'.format(gadget.datetime_to_timestamp(datetime.datetime.now())))
+                    self.conn.commit()
                     if self.count % 1000 == 0:
                         # Clear queue.
                         self.logger.add("Clearing queue...")
-                        for eachPoolId in range(Global.TrendAPIPoolNum):
+                        for eachPoolId in range(1, Global.TrendAPIPoolNum+1):
                             for eachPriority in self.queue[eachPoolId]:
                                 for eachQuery in self.queue[eachPoolId][eachPriority]:
                                     if self.queue[eachPoolId][eachPriority][eachQuery]["finished"]:
@@ -414,7 +426,7 @@ class ApiQueueHandler(threading.Thread):
                 for eachQueue in queueList:
                     eachQuery, eachPoolId, eachPriority = eachQueue
                     if eachPriority not in self.queue[eachPoolId]:
-                        self.queue[eachPoolId][eachQuery] = {}
+                        self.queue[eachPoolId][eachPriority] = {}
                     if eachQuery not in self.queue[eachPoolId][eachPriority]:
                         # Check whether same query with other priorities exists.
                         for eachPriority in self.queue[eachPoolId]:
@@ -427,3 +439,7 @@ class ApiQueueHandler(threading.Thread):
                 break
             time.sleep(Global.TrendAPIQueryCycle)
             self.count += 1
+
+if __name__=="__main__":
+    apiHandler = ApiHandler()
+    apiHandler.start()

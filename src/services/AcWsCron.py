@@ -148,5 +148,5 @@ if __name__ == "__main__":
     try:
         mode = int(sys.argv[1])
     except:
-        mode = 1 # NOTICE: When manually running it, modify this number to change the mode.
+        mode = 4 # NOTICE: When manually running it, modify this number to change the mode.
     main(mode)
